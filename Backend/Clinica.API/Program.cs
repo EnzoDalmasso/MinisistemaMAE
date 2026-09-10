@@ -10,6 +10,7 @@ using Clinica.Infraestructura.Persistencia;
 using Clinica.Infraestructura.Persistencia.Contexto;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -33,12 +34,31 @@ builder.Services.AgregarInfraestructura(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioActual, UsuarioActualHttp>();
 
-builder.Services.AddControllers().AddJsonOptions(opciones =>
-{
-    // Los estados de turno (y cualquier otro enum) viajan como texto en el JSON
-    // ("Pendiente", no "1"): más legible y consistente con el resto de la API en español.
-    opciones.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
+builder.Services.AddControllers()
+    .AddJsonOptions(opciones =>
+    {
+        // Los estados de turno (y cualquier otro enum) viajan como texto en el JSON
+        // ("Pendiente", no "1"): más legible y consistente con el resto de la API en español.
+        opciones.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(opciones =>
+    {
+        // Por defecto, [ApiController] devuelve sus propios errores 400 en formato
+        // ProblemDetails cuando falla el model binding (JSON malformado, un enum que
+        // no matchea, etc.), que quedaría inconsistente con el resto de la API.
+        // Se unifica al mismo formato { "mensaje", "errores" } que usa el resto.
+        opciones.InvalidModelStateResponseFactory = contexto =>
+        {
+            var errores = contexto.ModelState
+                .Where(par => par.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    par => par.Key,
+                    par => par.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+            var cuerpo = new { mensaje = "Los datos enviados no son válidos.", errores };
+            return new BadRequestObjectResult(cuerpo);
+        };
+    });
 
 // ---------- CORS ----------
 // El origen permitido se toma de configuración (variable de entorno ORIGEN_FRONTEND),
