@@ -179,15 +179,17 @@ Requiere el CLI de EF Core: `dotnet tool install --global dotnet-ef`.
 Cargados automáticamente por el seed (ver
 `Clinica.Infraestructura/Persistencia/SeedDeDatos.cs`):
 
-| Usuario | Contraseña (desarrollo) | Rol |
-|---|---|---|
-| `administrador` | `Admin123!` | Administrador |
-| `profesional` | `Profesional123!` | Profesional (vinculado a "Laura Gómez") |
+| Usuario | Rol |
+|---|---|
+| `administrador` | Administrador |
+| `profesional` | Profesional (vinculado a "Laura Gómez") |
 
-Estas contraseñas están definidas en `appsettings.Development.json` y
-`docker-compose`/README solo para que el proyecto funcione de entrada en
-local. En un despliegue real se sobreescriben con
-`DatosSemilla__ContrasenaAdministrador` / `DatosSemilla__ContrasenaProfesional`.
+Las contraseñas no se documentan acá: están definidas en
+`Backend/Clinica.API/appsettings.Development.json` (sección `DatosSemilla`),
+un archivo de conveniencia solo para correr el proyecto en local. En un
+despliegue real se sobreescriben con las variables de entorno
+`DatosSemilla__ContrasenaAdministrador` / `DatosSemilla__ContrasenaProfesional`
+(ver `Backend/.env.example`).
 
 El seed también carga 3 profesionales, 5 pacientes y 6 turnos ficticios en
 distintos estados, para que las pantallas no arranquen vacías.
