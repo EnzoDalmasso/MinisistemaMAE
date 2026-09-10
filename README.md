@@ -121,21 +121,23 @@ No hay ningún secreto real commiteado en el repo.
 
 ## Usuarios de prueba
 
-El seed los crea automáticamente al iniciar el backend (si la base está
-vacía):
+En un entorno local nuevo (base de datos vacía), el seed crea
+automáticamente dos cuentas:
 
-- `administrador` — rol Administrador
-- `profesional` — rol Profesional (vinculado al profesional "Laura Gómez")
+- `administrador` — rol Administrador.
+- `profesional` — rol Profesional, vinculado a un profesional de ejemplo.
 
-Las contraseñas están en `Backend/Clinica.API/appsettings.Development.json`
-para uso local. Se comparten por separado para la evaluación.
+El administrador puede dar de alta profesionales adicionales en cualquier
+momento desde su propio panel, definiendo usuario y contraseña para cada
+uno.
 
 Para el panel de Paciente no hace falta usuario ni contraseña: se entra por
 `/acceso-paciente` con nombre, apellido y DNI, y se crea la cuenta en el
 momento.
 
 El seed también carga profesionales, pacientes y turnos de ejemplo en
-distintos estados para no arrancar con las pantallas vacías.
+distintos estados, para no arrancar con las pantallas vacías en un entorno
+local nuevo.
 
 ## Prevención de turnos duplicados
 
