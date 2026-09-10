@@ -34,6 +34,16 @@ public class TurnosController : ControllerBase
         return Ok(await _servicio.ObtenerPorIdAsync(id, cancellationToken));
     }
 
+    // Grilla de horarios libres de un profesional en una fecha (según su
+    // duración de turno configurada). La usan las 3 pantallas donde se
+    // elige un horario: pedir turno, alta del administrador y reprogramar.
+    [HttpGet("horarios-disponibles")]
+    public async Task<ActionResult<List<TimeOnly>>> ObtenerHorariosDisponibles(
+        [FromQuery] int profesionalId, [FromQuery] DateOnly fecha, [FromQuery] int? excluirTurnoId, CancellationToken cancellationToken)
+    {
+        return Ok(await _servicio.ObtenerHorariosDisponiblesAsync(profesionalId, fecha, excluirTurnoId, cancellationToken));
+    }
+
     // El administrador crea turnos para cualquier paciente; el paciente solo
     // puede pedir turno para sí mismo (ServicioTurnos ignora el PacienteId
     // del body en ese caso y usa el de su propia sesión).

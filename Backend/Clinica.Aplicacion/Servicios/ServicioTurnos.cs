@@ -1,3 +1,4 @@
+using Clinica.Aplicacion.Comun;
 using Clinica.Aplicacion.DTOs.Turnos;
 using Clinica.Aplicacion.Excepciones;
 using Clinica.Aplicacion.Extensiones;
@@ -198,6 +199,33 @@ public class ServicioTurnos : IServicioTurnos
 
         var actualizado = await _repositorioTurnos.ObtenerPorIdAsync(turno.Id, cancellationToken) ?? turno;
         return TurnoMapeador.ADto(actualizado);
+    }
+
+    public async Task<List<TimeOnly>> ObtenerHorariosDisponiblesAsync(int profesionalId, DateOnly fecha, int? idExcluirTurno = null, CancellationToken cancellationToken = default)
+    {
+        var profesional = await _repositorioProfesionales.ObtenerPorIdAsync(profesionalId, cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el profesional seleccionado.");
+
+        var ocupados = await _repositorioTurnos.ObtenerHorariosOcupadosAsync(profesionalId, fecha, idExcluirTurno, cancellationToken);
+        var ocupadosPorHorario = ocupados.ToHashSet();
+
+        var duracion = TimeSpan.FromMinutes(profesional.DuracionTurnoMinutos);
+        var disponibles = new List<TimeOnly>();
+
+        // Genera la grilla completa (apertura -> cierre, de a "duracion") y
+        // descarta los horarios que ya tienen un turno activo. El último
+        // horario ofrecido es el último que termina sin pasarse del cierre.
+        var horarioActual = HorarioClinica.Apertura;
+        while (horarioActual.Add(duracion) <= HorarioClinica.Cierre)
+        {
+            if (!ocupadosPorHorario.Contains(horarioActual))
+            {
+                disponibles.Add(horarioActual);
+            }
+            horarioActual = horarioActual.Add(duracion);
+        }
+
+        return disponibles;
     }
 
     private void VerificarPertenencia(Turno turno)

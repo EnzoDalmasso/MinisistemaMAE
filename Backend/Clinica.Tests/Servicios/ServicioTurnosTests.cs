@@ -375,4 +375,42 @@ public class ServicioTurnosTests : IDisposable
         await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioProfesional.CambiarEstadoAsync(
             turnoAjeno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None));
     }
+
+    // 12. La grilla de horarios disponibles respeta la duración del
+    // profesional y excluye los horarios ya ocupados por turnos activos.
+    [Fact]
+    public async Task ObtenerHorariosDisponiblesAsync_ExcluyeHorariosOcupadosPorTurnosActivos()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var servicio = CrearServicio(contexto);
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+
+        await servicio.CrearAsync(new CrearTurnoDto { PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(9, 0) }, CancellationToken.None);
+
+        var disponibles = await servicio.ObtenerHorariosDisponiblesAsync(profesional.Id, fecha, cancellationToken: CancellationToken.None);
+
+        // El profesional del seed de pruebas queda con la duración por
+        // defecto (30 min), así que 07:00, 07:30, 08:00, 08:30 tienen que
+        // estar libres y 09:00 (ocupado) no.
+        Assert.Contains(new TimeOnly(8, 30), disponibles);
+        Assert.DoesNotContain(new TimeOnly(9, 0), disponibles);
+    }
+
+    // Un turno cancelado libera el horario también en la grilla de disponibles.
+    [Fact]
+    public async Task ObtenerHorariosDisponiblesAsync_ConTurnoCancelado_VuelveAOfrecerElHorario()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var servicio = CrearServicio(contexto);
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+
+        var turno = await servicio.CrearAsync(new CrearTurnoDto { PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(9, 0) }, CancellationToken.None);
+        await servicio.CancelarAsync(turno.Id, CancellationToken.None);
+
+        var disponibles = await servicio.ObtenerHorariosDisponiblesAsync(profesional.Id, fecha, cancellationToken: CancellationToken.None);
+
+        Assert.Contains(new TimeOnly(9, 0), disponibles);
+    }
 }

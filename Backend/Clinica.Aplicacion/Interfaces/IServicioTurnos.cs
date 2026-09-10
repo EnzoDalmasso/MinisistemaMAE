@@ -18,4 +18,11 @@ public interface IServicioTurnos
     // Usado por el profesional para marcar Confirmado/Atendido/Cancelado en
     // sus propios turnos (y por el administrador sobre cualquiera).
     Task<TurnoDto> CambiarEstadoAsync(int id, CambiarEstadoTurnoDto dto, CancellationToken cancellationToken = default);
+
+    // Grilla de horarios libres de un profesional en una fecha, según su
+    // duración de turno configurada. La usan las 3 pantallas que permiten
+    // elegir horario (pedir turno, nuevo turno del admin, reprogramar).
+    // "idExcluirTurno" evita que el propio turno que se está editando figure
+    // como "ocupado" por sí mismo.
+    Task<List<TimeOnly>> ObtenerHorariosDisponiblesAsync(int profesionalId, DateOnly fecha, int? idExcluirTurno = null, CancellationToken cancellationToken = default);
 }

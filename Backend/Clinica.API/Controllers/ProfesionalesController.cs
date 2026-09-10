@@ -40,4 +40,13 @@ public class ProfesionalesController : ControllerBase
     {
         return Ok(await _servicio.ActualizarAsync(id, dto, cancellationToken));
     }
+
+    // El propio profesional puede cambiar su duración de turno; el
+    // administrador, la de cualquiera (ServicioProfesionales valida el dueño).
+    [HttpPatch("{id:int}/duracion-turno")]
+    [Authorize(Roles = "Administrador,Profesional")]
+    public async Task<ActionResult<ProfesionalDto>> ActualizarDuracionTurno(int id, [FromBody] ActualizarDuracionTurnoDto dto, CancellationToken cancellationToken)
+    {
+        return Ok(await _servicio.ActualizarDuracionTurnoAsync(id, dto, cancellationToken));
+    }
 }
