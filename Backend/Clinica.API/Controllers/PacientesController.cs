@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// Toda la gestión de pacientes es exclusiva del rol Administrador (ver enunciado);
+// Toda la gestión de pacientes es exclusiva del rol Administrador
 // se aplica a nivel de controlador para no tener que repetirlo en cada acción.
 [ApiController]
 [Route("api/pacientes")]

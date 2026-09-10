@@ -69,6 +69,7 @@ public class ServicioPacientes : IServicioPacientes
         Nombre = p.Nombre,
         Apellido = p.Apellido,
         Telefono = p.Telefono,
-        ObraSocial = p.ObraSocial
+        ObraSocial = p.ObraSocial,
+        Dni = p.Dni
     };
 }

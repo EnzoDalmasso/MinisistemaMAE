@@ -42,7 +42,10 @@ public static class SeedDeDatos
             new() { Nombre = "Sofía", Apellido = "Fernández", Telefono = "11-5555-0002", ObraSocial = "Swiss Medical", FechaCreacion = ahora },
             new() { Nombre = "Lucas", Apellido = "Torres", Telefono = "11-5555-0003", ObraSocial = "Galeno", FechaCreacion = ahora },
             new() { Nombre = "Valentina", Apellido = "Díaz", Telefono = "11-5555-0004", ObraSocial = "IOMA", FechaCreacion = ahora },
-            new() { Nombre = "Nicolás", Apellido = "Molina", Telefono = "11-5555-0005", ObraSocial = "PAMI", FechaCreacion = ahora }
+            new() { Nombre = "Nicolás", Apellido = "Molina", Telefono = "11-5555-0005", ObraSocial = "PAMI", FechaCreacion = ahora },
+            // Este, a diferencia de los anteriores, simula un paciente que se
+            // autogestionó (tiene DNI y va a tener un Usuario propio abajo).
+            new() { Nombre = "Camila", Apellido = "Suárez", Dni = "30123456", FechaCreacion = ahora }
         };
         contexto.Pacientes.AddRange(pacientes);
         await contexto.SaveChangesAsync();
@@ -66,7 +69,20 @@ public static class SeedDeDatos
             FechaCreacion = ahora
         };
 
-        contexto.Usuarios.AddRange(usuarioAdministrador, usuarioProfesional);
+        // El paciente autogestionado "loguea" solo con su DNI (ver
+        // ServicioAutenticacion.AccederComoPacienteAsync); acá se simula esa
+        // misma cuenta para poder probar el flujo "paciente ya existente"
+        // desde el primer arranque.
+        var usuarioPaciente = new Usuario
+        {
+            NombreUsuario = pacientes[5].Dni!,
+            ContrasenaHash = hasheador.Hashear(pacientes[5].Dni!),
+            Rol = RolUsuario.Paciente,
+            PacienteId = pacientes[5].Id,
+            FechaCreacion = ahora
+        };
+
+        contexto.Usuarios.AddRange(usuarioAdministrador, usuarioProfesional, usuarioPaciente);
         await contexto.SaveChangesAsync();
 
         var hoy = DateOnly.FromDateTime(DateTime.Now);
@@ -78,7 +94,8 @@ public static class SeedDeDatos
             new() { PacienteId = pacientes[2].Id, ProfesionalId = profesionales[1].Id, Fecha = hoy.AddDays(2), Horario = new TimeOnly(11, 0), Estado = EstadoTurno.Pendiente, FechaCreacion = ahora },
             new() { PacienteId = pacientes[3].Id, ProfesionalId = profesionales[2].Id, Fecha = hoy.AddDays(3), Horario = new TimeOnly(15, 30), Estado = EstadoTurno.Confirmado, FechaCreacion = ahora },
             new() { PacienteId = pacientes[4].Id, ProfesionalId = profesionales[0].Id, Fecha = hoy.AddDays(-2), Horario = new TimeOnly(9, 0), Estado = EstadoTurno.Atendido, FechaCreacion = ahora },
-            new() { PacienteId = pacientes[0].Id, ProfesionalId = profesionales[1].Id, Fecha = hoy.AddDays(-1), Horario = new TimeOnly(16, 0), Estado = EstadoTurno.Cancelado, FechaCreacion = ahora }
+            new() { PacienteId = pacientes[0].Id, ProfesionalId = profesionales[1].Id, Fecha = hoy.AddDays(-1), Horario = new TimeOnly(16, 0), Estado = EstadoTurno.Cancelado, FechaCreacion = ahora },
+            new() { PacienteId = pacientes[5].Id, ProfesionalId = profesionales[2].Id, Fecha = hoy.AddDays(4), Horario = new TimeOnly(10, 0), Estado = EstadoTurno.Pendiente, FechaCreacion = ahora }
         };
         contexto.Turnos.AddRange(turnos);
         await contexto.SaveChangesAsync();
