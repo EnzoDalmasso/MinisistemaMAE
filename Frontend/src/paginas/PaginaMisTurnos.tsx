@@ -126,30 +126,11 @@ export function PaginaMisTurnos() {
     setModalNuevoAbierto(true);
   };
 
-  const manejarEnvioNuevo = formNuevo.onSubmit(async (valores) => {
-    if (!valores.fecha || !valores.horario) {
-      formNuevo.validate();
-      return;
-    }
-
-    // Los datos de contacto solo son obligatorios la primera vez (si ya
-    // están completos en el perfil, ni se muestran estos campos).
-    if (!datosDeContactoCompletos) {
-      let hayErroresDeContacto = false;
-      if (!valores.telefono.trim()) {
-        formNuevo.setFieldError('telefono', 'El teléfono es obligatorio.');
-        hayErroresDeContacto = true;
-      }
-      if (!valores.obraSocial.trim()) {
-        formNuevo.setFieldError('obraSocial', 'La obra social es obligatoria.');
-        hayErroresDeContacto = true;
-      }
-      if (!valores.email.trim()) {
-        formNuevo.setFieldError('email', 'El email es obligatorio.');
-        hayErroresDeContacto = true;
-      }
-      if (hayErroresDeContacto) return;
-    }
+  // Reserva el turno (y, si hace falta, guarda antes los datos de contacto).
+  // Se llama tanto desde el submit manual (primer turno, con los campos de
+  // contacto) como automáticamente al elegir un horario (turnos siguientes).
+  const confirmarNuevoTurno = async (valores: ValoresNuevoTurno) => {
+    if (!valores.fecha || !valores.horario) return;
 
     setGuardandoNuevo(true);
     try {
@@ -176,12 +157,41 @@ export function PaginaMisTurnos() {
       if (Object.keys(erroresDeCampo).length > 0) {
         formNuevo.setErrors(erroresDeCampo);
       } else {
-        // Acá cae, entre otros casos, el 409 de la regla de disponibilidad.
+        // Acá cae, entre otros casos, el 409 de la regla de disponibilidad
+        // (alguien tomó ese horario mientras se elegía): el modal queda
+        // abierto para que se pueda probar otro horario de la grilla.
         notifications.show({ color: 'red', message: obtenerMensajeError(err) });
       }
     } finally {
       setGuardandoNuevo(false);
     }
+  };
+
+  // Solo se usa cuando todavía hay que pedir datos de contacto (primer
+  // turno): en ese caso queda un botón "Confirmar" explícito porque hay más
+  // campos para completar después de elegir el horario.
+  const manejarEnvioNuevo = formNuevo.onSubmit(async (valores) => {
+    if (!valores.fecha || !valores.horario) {
+      formNuevo.validate();
+      return;
+    }
+
+    let hayErroresDeContacto = false;
+    if (!valores.telefono.trim()) {
+      formNuevo.setFieldError('telefono', 'El teléfono es obligatorio.');
+      hayErroresDeContacto = true;
+    }
+    if (!valores.obraSocial.trim()) {
+      formNuevo.setFieldError('obraSocial', 'La obra social es obligatoria.');
+      hayErroresDeContacto = true;
+    }
+    if (!valores.email.trim()) {
+      formNuevo.setFieldError('email', 'El email es obligatorio.');
+      hayErroresDeContacto = true;
+    }
+    if (hayErroresDeContacto) return;
+
+    await confirmarNuevoTurno(valores);
   });
 
   const abrirModalReprogramar = (turno: Turno) => {
@@ -351,13 +361,32 @@ export function PaginaMisTurnos() {
                     ? 'Buscando horarios...'
                     : horariosNuevo.length === 0
                       ? 'No hay horarios libres ese día'
-                      : 'Seleccionar horario'
+                      : datosDeContactoCompletos
+                        ? 'Seleccionar horario (confirma el turno al instante)'
+                        : 'Seleccionar horario'
               }
               required
-              disabled={!formNuevo.values.profesionalId || !formNuevo.values.fecha || horariosNuevo.length === 0}
+              disabled={
+                !formNuevo.values.profesionalId || !formNuevo.values.fecha || horariosNuevo.length === 0 || guardandoNuevo
+              }
               data={aOpcionesHorario(horariosNuevo)}
               {...formNuevo.getInputProps('horario')}
+              onChange={(valor) => {
+                formNuevo.setFieldValue('horario', valor);
+                // Con los datos de contacto ya cargados, no hace falta un
+                // paso extra de confirmación: elegir el horario reserva el
+                // turno directamente (mismo horario que se acaba de tipear,
+                // no el del estado del formulario, que todavía no se actualizó).
+                if (valor && datosDeContactoCompletos) {
+                  void confirmarNuevoTurno({ ...formNuevo.values, horario: valor });
+                }
+              }}
             />
+            {datosDeContactoCompletos && guardandoNuevo && (
+              <Text size="sm" c="dimmed">
+                Reservando turno...
+              </Text>
+            )}
             {!datosDeContactoCompletos && (
               <>
                 <Text size="sm" c="dimmed" mt="xs">
@@ -375,11 +404,13 @@ export function PaginaMisTurnos() {
             )}
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalNuevoAbierto(false)}>
-                Cancelar
+                {datosDeContactoCompletos ? 'Cerrar' : 'Cancelar'}
               </Button>
-              <Button type="submit" loading={guardandoNuevo}>
-                Confirmar
-              </Button>
+              {!datosDeContactoCompletos && (
+                <Button type="submit" loading={guardandoNuevo}>
+                  Confirmar
+                </Button>
+              )}
             </Group>
           </Stack>
         </form>
