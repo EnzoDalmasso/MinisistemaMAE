@@ -69,7 +69,7 @@ export function PaginaTurnos() {
     validate: {
       pacienteId: (valor) => (valor ? null : 'Debe seleccionar un paciente.'),
       profesionalId: (valor) => (valor ? null : 'Debe seleccionar un profesional.'),
-      fecha: (valor) => (valor ? null : 'La fecha es obligatoria.'),
+      fecha: (valor) => (valor instanceof Date && !Number.isNaN(valor.getTime()) ? null : 'La fecha es obligatoria.'),
       horario: (valor) => (valor ? null : 'El horario es obligatorio.'),
     },
   });
@@ -124,13 +124,28 @@ export function PaginaTurnos() {
   };
 
   const manejarEnvio = form.onSubmit(async (valores) => {
+    // Defensa extra además de la regla de "validate" de abajo: los inputs de
+    // fecha/hora de Mantine pueden, en casos borde, quedar con el valor
+    // visualmente completo pero sin confirmar en el estado del formulario.
+    // Sin este chequeo, un valores.fecha nulo hacía explotar fechaAIso() con
+    // un TypeError de JS (no un error de la API) que terminaba mostrándose
+    // como "error inesperado" genérico, sin siquiera llegar a llamar al backend.
+    if (!(valores.fecha instanceof Date) || Number.isNaN(valores.fecha.getTime()) || !valores.horario) {
+      form.validate();
+      notifications.show({
+        color: 'red',
+        message: 'Revisá la fecha y el horario: no quedaron cargados correctamente. Volvé a seleccionarlos.',
+      });
+      return;
+    }
+
     setGuardando(true);
     try {
       const horario = valores.horario.length === 5 ? `${valores.horario}:00` : valores.horario;
       const datosComunes = {
         pacienteId: Number(valores.pacienteId),
         profesionalId: Number(valores.profesionalId),
-        fecha: fechaAIso(valores.fecha as Date),
+        fecha: fechaAIso(valores.fecha),
         horario,
       };
 
@@ -144,6 +159,10 @@ export function PaginaTurnos() {
       setModalAbierto(false);
       await cargarTurnos();
     } catch (err) {
+      // Se deja en consola para poder diagnosticar errores que no vengan de
+      // la API (network, bugs de JS), sin exponer nada al usuario final.
+      console.error('Error al guardar el turno:', err);
+
       const erroresDeCampo = obtenerErroresDeCampo(err);
       if (Object.keys(erroresDeCampo).length > 0) {
         form.setErrors(erroresDeCampo);
