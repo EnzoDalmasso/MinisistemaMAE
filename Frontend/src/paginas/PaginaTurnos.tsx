@@ -51,6 +51,7 @@ const VALORES_INICIALES: ValoresFormularioTurno = {
 export function PaginaTurnos() {
   const { sesion } = useAutenticacion();
   const esAdministrador = sesion?.rol === 'Administrador';
+  const esProfesional = sesion?.rol === 'Profesional';
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -195,6 +196,16 @@ export function PaginaTurnos() {
     });
   };
 
+  const manejarCambiarEstado = async (turno: Turno, estado: EstadoTurno) => {
+    try {
+      await turnosServicio.cambiarEstado(turno.id, { estado });
+      notifications.show({ color: 'green', message: 'Estado actualizado correctamente.' });
+      await cargarTurnos();
+    } catch (err) {
+      notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+    }
+  };
+
   const opcionesPacientes = pacientes.map((p) => ({ value: String(p.id), label: `${p.nombre} ${p.apellido}` }));
   const opcionesProfesionales = profesionales.map((p) => ({
     value: String(p.id),
@@ -264,13 +275,13 @@ export function PaginaTurnos() {
               <Table.Th>Fecha</Table.Th>
               <Table.Th>Horario</Table.Th>
               <Table.Th>Estado</Table.Th>
-              {esAdministrador && <Table.Th w={100} />}
+              {(esAdministrador || esProfesional) && <Table.Th w={esAdministrador ? 100 : 160} />}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {turnos.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={esAdministrador ? 6 : 5}>
+                <Table.Td colSpan={esAdministrador || esProfesional ? 6 : 5}>
                   <Text c="dimmed" ta="center" py="md">
                     No hay turnos para los filtros seleccionados.
                   </Text>
@@ -308,6 +319,19 @@ export function PaginaTurnos() {
                           </ActionIcon>
                         )}
                       </Group>
+                    </Table.Td>
+                  )}
+                  {esProfesional && (
+                    <Table.Td>
+                      <Select
+                        size="xs"
+                        w={150}
+                        aria-label="Cambiar estado del turno"
+                        data={opcionesEstado}
+                        value={turno.estado}
+                        allowDeselect={false}
+                        onChange={(valor) => valor && manejarCambiarEstado(turno, valor as EstadoTurno)}
+                      />
                     </Table.Td>
                   )}
                 </Table.Tr>
