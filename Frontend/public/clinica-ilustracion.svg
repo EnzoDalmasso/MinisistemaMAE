@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <!-- cielo -->
+  <rect width="800" height="450" fill="#eaf4ff"/>
+  <circle cx="700" cy="80" r="45" fill="#ffe28a"/>
+
+  <!-- pasto -->
+  <rect x="0" y="380" width="800" height="70" fill="#bfe3c8"/>
+
+  <!-- vereda -->
+  <rect x="0" y="410" width="800" height="40" fill="#d9d3c7"/>
+
+  <!-- edificio principal -->
+  <rect x="180" y="150" width="440" height="260" fill="#ffffff" stroke="#c9d6e3" stroke-width="3"/>
+  <rect x="180" y="150" width="440" height="34" fill="#1971c2"/>
+
+  <!-- techo -->
+  <polygon points="160,150 400,80 640,150" fill="#0b5aa8"/>
+
+  <!-- cruz en el frente -->
+  <rect x="382" y="60" width="36" height="80" rx="6" fill="#ffffff" stroke="#0b5aa8" stroke-width="3"/>
+  <path d="M400 78a10 10 0 0 1 10 10v10h10a10 10 0 0 1 0 20h-10v10a10 10 0 0 1-20 0v-10h-10a10 10 0 0 1 0-20h10v-10a10 10 0 0 1 10-10Z" fill="#e03131"/>
+
+  <!-- cartel -->
+  <rect x="230" y="158" width="340" height="20" rx="4" fill="#ffffff"/>
+  <text x="400" y="173" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#1971c2" text-anchor="middle">CLÍNICA SAN RAFAEL</text>
+
+  <!-- puerta -->
+  <rect x="365" y="320" width="70" height="90" fill="#0b5aa8"/>
+  <rect x="375" y="330" width="20" height="80" fill="#eaf4ff" opacity="0.5"/>
+  <rect x="405" y="330" width="20" height="80" fill="#eaf4ff" opacity="0.5"/>
+
+  <!-- ventanas fila 1 -->
+  <g fill="#a9d4ff" stroke="#0b5aa8" stroke-width="2">
+    <rect x="215" y="210" width="60" height="50" rx="3"/>
+    <rect x="295" y="210" width="60" height="50" rx="3"/>
+    <rect x="445" y="210" width="60" height="50" rx="3"/>
+    <rect x="525" y="210" width="60" height="50" rx="3"/>
+  </g>
+
+  <!-- ventanas fila 2 -->
+  <g fill="#a9d4ff" stroke="#0b5aa8" stroke-width="2">
+    <rect x="215" y="290" width="60" height="50" rx="3"/>
+    <rect x="525" y="290" width="60" height="50" rx="3"/>
+  </g>
+
+  <!-- arbustos -->
+  <g fill="#5fb37a">
+    <ellipse cx="150" cy="400" rx="35" ry="22"/>
+    <ellipse cx="650" cy="400" rx="35" ry="22"/>
+    <ellipse cx="700" cy="405" rx="25" ry="16"/>
+  </g>
+
+  <!-- arbol -->
+  <g>
+    <rect x="92" y="330" width="14" height="70" fill="#8a5a34"/>
+    <circle cx="99" cy="315" r="45" fill="#4f9f6c"/>
+  </g>
+</svg>

@@ -42,7 +42,7 @@ export function DisenioPrincipal() {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={navAbierta} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text fw={700}>Clínica · Gestión de turnos</Text>
+            <Text fw={700}>Clínica San Rafael · Gestión de turnos</Text>
           </Group>
 
           <Group gap="sm">

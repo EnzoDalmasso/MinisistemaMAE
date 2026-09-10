@@ -31,7 +31,7 @@ export function PaginaLogin() {
   return (
     <Container size={420} my={80}>
       <Title ta="center" order={2}>
-        Clínica
+        Clínica San Rafael
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
         Sistema de gestión de turnos
