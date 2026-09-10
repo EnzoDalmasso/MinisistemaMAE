@@ -26,13 +26,16 @@ import { ESTADOS_TURNO, type EstadoTurno, type Turno, type TurnoFiltro } from '.
 import { pacientesServicio } from '../servicios/pacientesServicio';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
 import { turnosServicio } from '../servicios/turnosServicio';
-import { fechaAIso, formatearFecha, formatearHorario, isoAFecha } from '../utilidades/formato';
+import { formatearFecha, formatearHorario } from '../utilidades/formato';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
 
 interface ValoresFormularioTurno {
   pacienteId: string;
   profesionalId: string;
-  fecha: Date | null;
+  // DateInput de @mantine/dates (v9) entrega el valor como string ISO
+  // "AAAA-MM-DD" (no como objeto Date), que además es exactamente el formato
+  // que espera el backend: no hace falta ninguna conversión intermedia.
+  fecha: string | null;
   horario: string;
   estado: EstadoTurno;
 }
@@ -53,7 +56,7 @@ export function PaginaTurnos() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [filtroFecha, setFiltroFecha] = useState<Date | null>(null);
+  const [filtroFecha, setFiltroFecha] = useState<string | null>(null);
   const [filtroProfesionalId, setFiltroProfesionalId] = useState<string | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string | null>(null);
 
@@ -69,7 +72,7 @@ export function PaginaTurnos() {
     validate: {
       pacienteId: (valor) => (valor ? null : 'Debe seleccionar un paciente.'),
       profesionalId: (valor) => (valor ? null : 'Debe seleccionar un profesional.'),
-      fecha: (valor) => (valor instanceof Date && !Number.isNaN(valor.getTime()) ? null : 'La fecha es obligatoria.'),
+      fecha: (valor) => (valor ? null : 'La fecha es obligatoria.'),
       horario: (valor) => (valor ? null : 'El horario es obligatorio.'),
     },
   });
@@ -79,7 +82,7 @@ export function PaginaTurnos() {
     setError(null);
     try {
       const filtro: TurnoFiltro = {};
-      if (filtroFecha) filtro.fecha = fechaAIso(filtroFecha);
+      if (filtroFecha) filtro.fecha = filtroFecha;
       if (esAdministrador && filtroProfesionalId) filtro.profesionalId = Number(filtroProfesionalId);
       if (filtroEstado) filtro.estado = filtroEstado as EstadoTurno;
 
@@ -115,7 +118,7 @@ export function PaginaTurnos() {
     form.setValues({
       pacienteId: String(turno.pacienteId),
       profesionalId: String(turno.profesionalId),
-      fecha: isoAFecha(turno.fecha),
+      fecha: turno.fecha,
       horario: formatearHorario(turno.horario),
       estado: turno.estado,
     });
@@ -124,18 +127,11 @@ export function PaginaTurnos() {
   };
 
   const manejarEnvio = form.onSubmit(async (valores) => {
-    // Defensa extra además de la regla de "validate" de abajo: los inputs de
-    // fecha/hora de Mantine pueden, en casos borde, quedar con el valor
-    // visualmente completo pero sin confirmar en el estado del formulario.
-    // Sin este chequeo, un valores.fecha nulo hacía explotar fechaAIso() con
-    // un TypeError de JS (no un error de la API) que terminaba mostrándose
-    // como "error inesperado" genérico, sin siquiera llegar a llamar al backend.
-    if (!(valores.fecha instanceof Date) || Number.isNaN(valores.fecha.getTime()) || !valores.horario) {
+    // Defensa extra por si algún input queda sin confirmar en el estado del
+    // formulario pese a pasar la validación de arriba (evita construir un
+    // request con datos incompletos en vez de simplemente fallar en silencio).
+    if (!valores.fecha || !valores.horario) {
       form.validate();
-      notifications.show({
-        color: 'red',
-        message: 'Revisá la fecha y el horario: no quedaron cargados correctamente. Volvé a seleccionarlos.',
-      });
       return;
     }
 
@@ -145,7 +141,7 @@ export function PaginaTurnos() {
       const datosComunes = {
         pacienteId: Number(valores.pacienteId),
         profesionalId: Number(valores.profesionalId),
-        fecha: fechaAIso(valores.fecha),
+        fecha: valores.fecha,
         horario,
       };
 
@@ -222,7 +218,7 @@ export function PaginaTurnos() {
           label="Fecha"
           placeholder="Todas las fechas"
           value={filtroFecha}
-          onChange={(valor) => setFiltroFecha(valor ? new Date(valor) : null)}
+          onChange={setFiltroFecha}
           clearable
           w={180}
         />
