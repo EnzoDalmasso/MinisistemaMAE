@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Alert,
+  Badge,
   Button,
   Center,
   Group,
@@ -15,22 +16,25 @@ import {
   Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconEdit, IconPlus } from '@tabler/icons-react';
+import { IconAlertCircle, IconBan, IconEdit, IconPlayerPlay, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import type { CrearProfesionalDto, Profesional } from '../modelos/profesional';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
 
 // Se usa la forma "completa" (incluye usuario/contraseña) también para
-// editar: en ese caso esos dos campos simplemente no se muestran ni se
-// mandan (ver manejarEnvio), pero mantener un solo tipo de formulario evita
-// duplicar toda la lógica de validación entre alta y edición.
+// editar: en ese caso usuario/contraseña-de-alta simplemente no se muestran
+// ni se mandan (ver manejarEnvio), pero mantener un solo tipo de formulario
+// evita duplicar toda la lógica de validación entre alta y edición.
 const VALORES_INICIALES: CrearProfesionalDto = {
   nombre: '',
   apellido: '',
   especialidad: '',
   duracionTurnoMinutos: 30,
+  email: '',
+  nuevaContrasena: '',
   nombreUsuario: '',
   contrasena: '',
 };
@@ -54,8 +58,8 @@ export function PaginaProfesionales() {
         valor.trim().length === 0 ? 'La especialidad es obligatoria.' : valor.length > 100 ? 'Máximo 100 caracteres.' : null,
       duracionTurnoMinutos: (valor) =>
         valor >= 5 && valor <= 180 && valor % 5 === 0 ? null : 'Debe ser un múltiplo de 5, entre 5 y 180 minutos.',
-      // El usuario/contraseña solo hacen falta al crear (ver abajo); al
-      // editar no se piden, así que acá no se validan.
+      // El usuario/contraseña de alta y la nueva contraseña de edición se
+      // validan a mano en manejarEnvio (son condicionales según el modo).
     },
   });
 
@@ -90,6 +94,8 @@ export function PaginaProfesionales() {
       apellido: profesional.apellido,
       especialidad: profesional.especialidad,
       duracionTurnoMinutos: profesional.duracionTurnoMinutos,
+      email: profesional.email ?? '',
+      nuevaContrasena: '',
       nombreUsuario: '',
       contrasena: '',
     });
@@ -109,13 +115,24 @@ export function PaginaProfesionales() {
         hayErroresDeCuenta = true;
       }
       if (hayErroresDeCuenta) return;
+    } else if (valores.nuevaContrasena && valores.nuevaContrasena.length < 6) {
+      // Dejarla vacía es válido (significa "no cambiarla"); si escribió algo, tiene que ser una contraseña real.
+      form.setFieldError('nuevaContrasena', 'La contraseña debe tener al menos 6 caracteres.');
+      return;
     }
 
     setGuardando(true);
     try {
       if (profesionalEnEdicion) {
-        const { nombre, apellido, especialidad, duracionTurnoMinutos } = valores;
-        await profesionalesServicio.actualizar(profesionalEnEdicion.id, { nombre, apellido, especialidad, duracionTurnoMinutos });
+        const { nombre, apellido, especialidad, duracionTurnoMinutos, email, nuevaContrasena } = valores;
+        await profesionalesServicio.actualizar(profesionalEnEdicion.id, {
+          nombre,
+          apellido,
+          especialidad,
+          duracionTurnoMinutos,
+          email,
+          nuevaContrasena: nuevaContrasena?.trim() || undefined,
+        });
         notifications.show({ color: 'green', message: 'Profesional actualizado correctamente.' });
       } else {
         await profesionalesServicio.crear(valores);
@@ -135,6 +152,63 @@ export function PaginaProfesionales() {
       setGuardando(false);
     }
   });
+
+  const manejarDesactivar = (profesional: Profesional) => {
+    modals.openConfirmModal({
+      title: 'Desactivar profesional',
+      children: (
+        <Text size="sm">
+          ¿Confirmás desactivar a <strong>{profesional.nombre} {profesional.apellido}</strong>? No va a poder
+          loguearse ni se lo va a poder elegir para turnos nuevos (sus turnos ya cargados no se tocan). Podés
+          reactivarlo cuando quieras.
+        </Text>
+      ),
+      labels: { confirm: 'Desactivar', cancel: 'Volver' },
+      confirmProps: { color: 'orange' },
+      onConfirm: async () => {
+        try {
+          await profesionalesServicio.desactivar(profesional.id);
+          notifications.show({ color: 'green', message: 'Profesional desactivado correctamente.' });
+          await cargarProfesionales();
+        } catch (err) {
+          notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+        }
+      },
+    });
+  };
+
+  const manejarReactivar = async (profesional: Profesional) => {
+    try {
+      await profesionalesServicio.reactivar(profesional.id);
+      notifications.show({ color: 'green', message: 'Profesional reactivado correctamente.' });
+      await cargarProfesionales();
+    } catch (err) {
+      notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+    }
+  };
+
+  const manejarEliminar = (profesional: Profesional) => {
+    modals.openConfirmModal({
+      title: 'Eliminar profesional',
+      children: (
+        <Text size="sm">
+          ¿Confirmás eliminar definitivamente a <strong>{profesional.nombre} {profesional.apellido}</strong>? Esta
+          acción no se puede deshacer.
+        </Text>
+      ),
+      labels: { confirm: 'Eliminar definitivamente', cancel: 'Volver' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await profesionalesServicio.eliminar(profesional.id);
+          notifications.show({ color: 'green', message: 'Profesional eliminado correctamente.' });
+          await cargarProfesionales();
+        } catch (err) {
+          notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+        }
+      },
+    });
+  };
 
   return (
     <>
@@ -162,14 +236,16 @@ export function PaginaProfesionales() {
               <Table.Th>Nombre</Table.Th>
               <Table.Th>Apellido</Table.Th>
               <Table.Th>Especialidad</Table.Th>
+              <Table.Th>Email</Table.Th>
               <Table.Th>Duración turno</Table.Th>
-              <Table.Th w={80} />
+              <Table.Th>Estado</Table.Th>
+              <Table.Th w={120} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {profesionales.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={7}>
                   <Text c="dimmed" ta="center" py="md">
                     Todavía no hay profesionales cargados.
                   </Text>
@@ -181,11 +257,48 @@ export function PaginaProfesionales() {
                   <Table.Td>{profesional.nombre}</Table.Td>
                   <Table.Td>{profesional.apellido}</Table.Td>
                   <Table.Td>{profesional.especialidad}</Table.Td>
+                  <Table.Td>{profesional.email ?? '—'}</Table.Td>
                   <Table.Td>{profesional.duracionTurnoMinutos} min</Table.Td>
                   <Table.Td>
-                    <ActionIcon variant="subtle" onClick={() => abrirModalEditar(profesional)} aria-label="Editar profesional">
-                      <IconEdit size={16} />
-                    </ActionIcon>
+                    <Badge color={profesional.activo ? 'green' : 'gray'} variant="light">
+                      {profesional.activo ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      <ActionIcon variant="subtle" onClick={() => abrirModalEditar(profesional)} aria-label="Editar profesional">
+                        <IconEdit size={16} />
+                      </ActionIcon>
+                      {profesional.activo ? (
+                        <ActionIcon
+                          variant="subtle"
+                          color="orange"
+                          onClick={() => manejarDesactivar(profesional)}
+                          aria-label="Desactivar profesional"
+                        >
+                          <IconBan size={16} />
+                        </ActionIcon>
+                      ) : (
+                        <ActionIcon
+                          variant="subtle"
+                          color="green"
+                          onClick={() => manejarReactivar(profesional)}
+                          aria-label="Reactivar profesional"
+                        >
+                          <IconPlayerPlay size={16} />
+                        </ActionIcon>
+                      )}
+                      {profesional.puedeEliminarse && (
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          onClick={() => manejarEliminar(profesional)}
+                          aria-label="Eliminar profesional"
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      )}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -210,6 +323,13 @@ export function PaginaProfesionales() {
               placeholder="Clínica Médica"
               {...form.getInputProps('especialidad')}
             />
+            <TextInput
+              label="Email"
+              type="email"
+              maxLength={150}
+              placeholder="laura.gomez@clinica.com"
+              {...form.getInputProps('email')}
+            />
             <NumberInput
               label="Duración de cada turno (minutos)"
               description="Define cada cuánto se ofrecen horarios al pedir un turno con este profesional."
@@ -233,6 +353,14 @@ export function PaginaProfesionales() {
                 />
                 <PasswordInput label="Contraseña" required {...form.getInputProps('contrasena')} />
               </>
+            )}
+            {profesionalEnEdicion && (
+              <PasswordInput
+                label="Nueva contraseña"
+                description="Dejar en blanco para no cambiarla."
+                placeholder="••••••••"
+                {...form.getInputProps('nuevaContrasena')}
+              />
             )}
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalAbierto(false)}>

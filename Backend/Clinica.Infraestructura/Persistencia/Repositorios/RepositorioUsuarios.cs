@@ -25,4 +25,19 @@ public class RepositorioUsuarios : IRepositorioUsuarios
         _contexto.Usuarios.Add(usuario);
         await _contexto.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Usuario?> ObtenerPorProfesionalIdAsync(int profesionalId, CancellationToken cancellationToken = default) =>
+        await _contexto.Usuarios.FirstOrDefaultAsync(u => u.ProfesionalId == profesionalId, cancellationToken);
+
+    public async Task ActualizarAsync(Usuario usuario, CancellationToken cancellationToken = default)
+    {
+        _contexto.Usuarios.Update(usuario);
+        await _contexto.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task EliminarAsync(Usuario usuario, CancellationToken cancellationToken = default)
+    {
+        _contexto.Usuarios.Remove(usuario);
+        await _contexto.SaveChangesAsync(cancellationToken);
+    }
 }

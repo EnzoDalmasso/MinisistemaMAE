@@ -247,10 +247,14 @@ export function PaginaMisTurnos() {
     });
   };
 
-  const opcionesProfesionales = profesionales.map((p) => ({
-    value: String(p.id),
-    label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
-  }));
+  // Un profesional desactivado no se ofrece para pedir turnos nuevos (el
+  // backend también lo rechaza, esto es solo para no mostrarlo en la lista).
+  const opcionesProfesionales = profesionales
+    .filter((p) => p.activo)
+    .map((p) => ({
+      value: String(p.id),
+      label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
+    }));
 
   const aOpcionesHorario = (horarios: string[]) => horarios.map((h) => ({ value: h, label: formatearHorario(h) }));
 

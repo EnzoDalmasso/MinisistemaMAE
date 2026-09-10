@@ -7,4 +7,11 @@ public class ProfesionalDto
     public string Apellido { get; set; } = string.Empty;
     public string Especialidad { get; set; } = string.Empty;
     public int DuracionTurnoMinutos { get; set; }
+    public string? Email { get; set; }
+    public bool Activo { get; set; }
+
+    // Calculado por el servicio: desactivado hace al menos 7 días y sin
+    // ningún turno asociado. El frontend lo usa para habilitar/ocultar el
+    // botón "Eliminar" sin reimplementar la regla.
+    public bool PuedeEliminarse { get; set; }
 }

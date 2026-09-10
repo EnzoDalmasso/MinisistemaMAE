@@ -4,6 +4,11 @@ export interface Profesional {
   apellido: string;
   especialidad: string;
   duracionTurnoMinutos: number;
+  email: string | null;
+  activo: boolean;
+  // Calculado por el backend: desactivado hace 7+ días y sin turnos
+  // asociados. Controla si se puede mostrar el botón "Eliminar".
+  puedeEliminarse: boolean;
 }
 
 export interface GuardarProfesionalDto {
@@ -11,6 +16,11 @@ export interface GuardarProfesionalDto {
   apellido: string;
   especialidad: string;
   duracionTurnoMinutos: number;
+  // Opcional: en la edición, dejarlo vacío no cambia el email actual (se
+  // manda tal cual, incluso vacío, a diferencia de nuevaContrasena).
+  email: string;
+  // Opcional: dejarlo vacío en la edición no cambia la contraseña actual.
+  nuevaContrasena?: string;
 }
 
 // Solo se usa al dar de alta: el administrador define acá el usuario y

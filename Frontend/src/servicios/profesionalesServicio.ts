@@ -21,4 +21,18 @@ export const profesionalesServicio = {
     const { data } = await clienteApi.patch<Profesional>(`/profesionales/${id}/duracion-turno`, { duracionTurnoMinutos });
     return data;
   },
+
+  desactivar: async (id: number): Promise<Profesional> => {
+    const { data } = await clienteApi.patch<Profesional>(`/profesionales/${id}/desactivar`);
+    return data;
+  },
+
+  reactivar: async (id: number): Promise<Profesional> => {
+    const { data } = await clienteApi.patch<Profesional>(`/profesionales/${id}/reactivar`);
+    return data;
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await clienteApi.delete(`/profesionales/${id}`);
+  },
 };

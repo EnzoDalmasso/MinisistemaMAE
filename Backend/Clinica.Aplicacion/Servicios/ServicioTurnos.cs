@@ -82,7 +82,7 @@ public class ServicioTurnos : IServicioTurnos
             ? ObtenerPacienteIdPropio()
             : dto.PacienteId;
 
-        await VerificarExistenciaAsync(pacienteId, dto.ProfesionalId, cancellationToken);
+        await VerificarExistenciaAsync(pacienteId, dto.ProfesionalId, cancellationToken, exigirProfesionalActivo: true);
         await VerificarDisponibilidadAsync(dto.ProfesionalId, dto.Fecha, dto.Horario, idExcluir: null, cancellationToken);
 
         var turno = new Turno
@@ -267,16 +267,21 @@ public class ServicioTurnos : IServicioTurnos
     private int ObtenerPacienteIdPropio() =>
         _usuarioActual.PacienteId ?? throw new ExcepcionProhibido("La cuenta no tiene un paciente asociado.");
 
-    private async Task VerificarExistenciaAsync(int pacienteId, int profesionalId, CancellationToken cancellationToken)
+    private async Task VerificarExistenciaAsync(int pacienteId, int profesionalId, CancellationToken cancellationToken, bool exigirProfesionalActivo = false)
     {
         if (await _repositorioPacientes.ObtenerPorIdAsync(pacienteId, cancellationToken) is null)
         {
             throw new ExcepcionNoEncontrado("No se encontró el paciente seleccionado.");
         }
 
-        if (await _repositorioProfesionales.ObtenerPorIdAsync(profesionalId, cancellationToken) is null)
+        var profesional = await _repositorioProfesionales.ObtenerPorIdAsync(profesionalId, cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el profesional seleccionado.");
+
+        // Solo se exige al pedir un turno NUEVO: no bloquea editar/reprogramar
+        // uno ya existente cuyo profesional se haya desactivado después.
+        if (exigirProfesionalActivo && !profesional.Activo)
         {
-            throw new ExcepcionNoEncontrado("No se encontró el profesional seleccionado.");
+            throw new ExcepcionConflicto("Ese profesional no está disponible para pedir turnos nuevos.");
         }
     }
 

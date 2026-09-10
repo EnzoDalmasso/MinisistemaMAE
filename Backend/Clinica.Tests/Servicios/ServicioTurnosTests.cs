@@ -479,6 +479,28 @@ public class ServicioTurnosTests : IDisposable
         await Assert.ThrowsAsync<ExcepcionValidacion>(() => servicio.CrearAsync(dto, CancellationToken.None));
     }
 
+    // Un profesional desactivado no puede recibir turnos nuevos (sí se
+    // permite editar/reprogramar uno que ya tenía de antes, ver ServicioTurnos).
+    [Fact]
+    public async Task CrearAsync_ConProfesionalDesactivado_LanzaConflicto()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        profesional.Activo = false;
+        await contexto.SaveChangesAsync();
+        var servicio = CrearServicio(contexto);
+
+        var dto = new CrearTurnoDto
+        {
+            PacienteId = paciente.Id,
+            ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1),
+            Horario = new TimeOnly(10, 0)
+        };
+
+        await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.CrearAsync(dto, CancellationToken.None));
+    }
+
     // La grilla de hoy no debe ofrecer horarios que ya pasaron (antes se
     // seguían mostrando turnos "disponibles" de horas ya vencidas del día).
     [Fact]

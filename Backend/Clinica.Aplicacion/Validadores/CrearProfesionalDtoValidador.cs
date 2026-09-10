@@ -23,6 +23,11 @@ public class CrearProfesionalDtoValidador : AbstractValidator<CrearProfesionalDt
             .InclusiveBetween(5, 180).WithMessage("La duración del turno debe estar entre 5 y 180 minutos.")
             .Must(valor => valor % 5 == 0).WithMessage("La duración del turno debe ser múltiplo de 5 minutos.");
 
+        RuleFor(p => p.Email)
+            .EmailAddress().WithMessage("El email no tiene un formato válido.")
+            .MaximumLength(150).WithMessage("El email no puede superar los 150 caracteres.")
+            .When(p => !string.IsNullOrWhiteSpace(p.Email));
+
         RuleFor(p => p.NombreUsuario)
             .NotEmpty().WithMessage("El usuario es obligatorio.")
             .MaximumLength(50).WithMessage("El usuario no puede superar los 50 caracteres.");

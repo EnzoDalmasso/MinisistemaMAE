@@ -49,4 +49,28 @@ public class ProfesionalesController : ControllerBase
     {
         return Ok(await _servicio.ActualizarDuracionTurnoAsync(id, dto, cancellationToken));
     }
+
+    [HttpPatch("{id:int}/desactivar")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<ActionResult<ProfesionalDto>> Desactivar(int id, CancellationToken cancellationToken)
+    {
+        return Ok(await _servicio.DesactivarAsync(id, cancellationToken));
+    }
+
+    [HttpPatch("{id:int}/reactivar")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<ActionResult<ProfesionalDto>> Reactivar(int id, CancellationToken cancellationToken)
+    {
+        return Ok(await _servicio.ReactivarAsync(id, cancellationToken));
+    }
+
+    // Definitivo: ServicioProfesionales exige que esté desactivado hace 7+
+    // días y sin turnos asociados; si no, devuelve 409 con el motivo.
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<ActionResult> Eliminar(int id, CancellationToken cancellationToken)
+    {
+        await _servicio.EliminarAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

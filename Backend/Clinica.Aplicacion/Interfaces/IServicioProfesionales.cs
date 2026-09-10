@@ -11,4 +11,13 @@ public interface IServicioProfesionales
     // Puede llamarlo el Administrador (sobre cualquier profesional) o el
     // propio profesional (solo sobre sí mismo); el chequeo de permiso vive acá.
     Task<ProfesionalDto> ActualizarDuracionTurnoAsync(int id, ActualizarDuracionTurnoDto dto, CancellationToken cancellationToken = default);
+
+    // Las tres siguientes son exclusivas del Administrador (ver
+    // ProfesionalesController). Desactivar también desactiva el Usuario
+    // vinculado (no puede loguearse) y deja de ofrecerse para turnos nuevos;
+    // Reactivar revierte ambas cosas. Eliminar es definitivo y solo procede
+    // si está desactivado hace 7+ días y no tiene ningún turno asociado.
+    Task<ProfesionalDto> DesactivarAsync(int id, CancellationToken cancellationToken = default);
+    Task<ProfesionalDto> ReactivarAsync(int id, CancellationToken cancellationToken = default);
+    Task EliminarAsync(int id, CancellationToken cancellationToken = default);
 }

@@ -34,4 +34,10 @@ public class RepositorioProfesionales : IRepositorioProfesionales
         _contexto.Profesionales.Update(profesional);
         await _contexto.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task EliminarAsync(Profesional profesional, CancellationToken cancellationToken = default)
+    {
+        _contexto.Profesionales.Remove(profesional);
+        await _contexto.SaveChangesAsync(cancellationToken);
+    }
 }

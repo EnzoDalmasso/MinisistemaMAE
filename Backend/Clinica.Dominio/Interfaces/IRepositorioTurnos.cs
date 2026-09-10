@@ -41,4 +41,14 @@ public interface IRepositorioTurnos
 
     Task AgregarAsync(Turno turno, CancellationToken cancellationToken = default);
     Task ActualizarAsync(Turno turno, CancellationToken cancellationToken = default);
+
+    // Usado al intentar eliminar definitivamente un profesional: si tiene
+    // aunque sea un turno (de cualquier estado, incluido Cancelado, porque es
+    // historial), no se lo puede borrar sin romper esa referencia.
+    Task<bool> ExisteAlgunoPorProfesionalAsync(int profesionalId, CancellationToken cancellationToken = default);
+
+    // IDs de todos los profesionales que tienen al menos un turno, en una
+    // sola consulta — usado para calcular en el listado si cada profesional
+    // "puede eliminarse" sin hacer una consulta por fila.
+    Task<HashSet<int>> ObtenerProfesionalesConTurnosAsync(CancellationToken cancellationToken = default);
 }

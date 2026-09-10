@@ -10,6 +10,9 @@ public class CrearProfesionalDto
     // turno. 30 por defecto si no se especifica.
     public int DuracionTurnoMinutos { get; set; } = 30;
 
+    // Email de contacto, opcional (no forma parte del login).
+    public string? Email { get; set; }
+
     // El administrador define acá las credenciales con las que el
     // profesional va a loguearse (ver ServicioProfesionales.CrearAsync, que
     // da de alta el Usuario vinculado en el mismo paso).

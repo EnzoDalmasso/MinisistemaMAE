@@ -13,6 +13,16 @@ public class Profesional
     // propio profesional o el administrador.
     public int DuracionTurnoMinutos { get; set; } = 30;
 
+    // Email de contacto (distinto del NombreUsuario con el que loguea el
+    // profesional en su Usuario vinculado). Opcional: no se pide al crear.
+    public string? Email { get; set; }
+
+    // Un profesional desactivado no puede loguearse (se desactiva también su
+    // Usuario vinculado) ni se lo ofrece para pedir turnos nuevos, pero
+    // conserva su historial de turnos. Ver ServicioProfesionales.
+    public bool Activo { get; set; } = true;
+    public DateTime? FechaDesactivacion { get; set; }
+
     public DateTime FechaCreacion { get; set; }
 
     public ICollection<Turno> Turnos { get; set; } = new List<Turno>();

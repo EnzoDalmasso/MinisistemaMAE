@@ -249,10 +249,21 @@ export function PaginaTurnos() {
   };
 
   const opcionesPacientes = pacientes.map((p) => ({ value: String(p.id), label: `${p.nombre} ${p.apellido}` }));
+  // Usada para el filtro del listado: muestra todos, incluidos los
+  // desactivados (para poder seguir viendo/filtrando turnos históricos).
   const opcionesProfesionales = profesionales.map((p) => ({
     value: String(p.id),
     label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
   }));
+  // Usada en el modal de Nuevo/Editar turno: no se ofrece un profesional
+  // desactivado para un turno nuevo, pero si el turno en edición ya lo tenía
+  // asignado, se lo agrega igual para que el select lo siga mostrando bien.
+  const opcionesProfesionalesParaTurno = profesionales
+    .filter((p) => p.activo || p.id === turnoEnEdicion?.profesionalId)
+    .map((p) => ({
+      value: String(p.id),
+      label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
+    }));
   const opcionesEstado = ESTADOS_TURNO.map((estado) => ({ value: estado, label: estado }));
   // El profesional solo registra si el paciente fue atendido o no se
   // presentó; los estados previos (Pendiente/Confirmado) los administra el
@@ -437,7 +448,7 @@ export function PaginaTurnos() {
               placeholder="Seleccionar profesional"
               required
               searchable
-              data={opcionesProfesionales}
+              data={opcionesProfesionalesParaTurno}
               {...form.getInputProps('profesionalId')}
               onChange={(valor) => {
                 form.setFieldValue('profesionalId', valor ?? '');
