@@ -65,6 +65,18 @@ resuelta por Swashbuckle reorganizó sus namespaces; SQLite no soporta
 generación automática de valores para una columna `xmin`, lo que llevó a
 condicionar esa configuración al proveedor de base de datos activo).
 
+### Segunda ronda: rol Paciente
+
+Ya con el sistema de 2 roles funcionando y probado en vivo, se pidió agregar
+un tercer panel para que el paciente autogestione sus propios turnos. Antes
+de tocar código, Claude Code volvió a entrar en modo plan y primero hizo
+preguntas puntuales (no asumió nada) sobre 3 decisiones que cambiaban el
+diseño: cómo se dan de alta los pacientes, qué puede hacer cada uno con sus
+turnos, y específicamente si el login del paciente iba a pedir contraseña o
+no. Esa última respuesta (sin contraseña) generó una decisión de arquitectura
+concreta: reutilizar la infraestructura de JWT/BCrypt existente en vez de
+abrir un mecanismo de autenticación paralelo, documentada en el README.
+
 ## Revisión humana
 
 Antes de entregar esta prueba, quien la presenta debería revisar
@@ -77,11 +89,18 @@ puntualmente:
   concurrencia real contra PostgreSQL (los tests automatizados la validan
   contra SQLite en memoria, con fidelidad de índice único pero sin ser el
   motor de producción; ver "Mejoras futuras" en el README).
-- El flujo completo en el navegador contra un backend con PostgreSQL real
-  (en esta sesión se verificó el build, los tests, la pantalla de login y el
-  manejo de errores del frontend sin backend disponible, pero no el
-  recorrido funcional completo end-to-end con base de datos).
 - Los mensajes de validación y el copy general de la interfaz.
+
+En una sesión posterior sí se verificó el recorrido funcional completo
+contra PostgreSQL real (login de los 3 roles, alta/reprogramación/
+cancelación de turnos, regla de disponibilidad con 409 real, y las
+restricciones de permisos entre pacientes y entre profesionales), tanto por
+API directa como por la interfaz en el navegador. En el camino se encontraron
+y corrigieron 2 bugs reales gracias a esa prueba en vivo: un formato de
+respuesta de error inconsistente para fallas de deserialización JSON, y un
+cambio de tipo de dato en la librería de fecha del frontend (Mantine v9
+entrega el valor como string en vez de `Date`) que hacía fallar
+silenciosamente el guardado de un turno.
 
 ## Decisiones propias
 
@@ -93,6 +112,9 @@ criterio técnico, entre ellas:
   únicos parciales (pieza clave de la regla de disponibilidad) y opciones de
   hosting gratuito más simples.
 - Que un turno cancelado libere el horario para reutilizarse.
+- Que el login del paciente no pida contraseña (solo Nombre + Apellido +
+  DNI): decisión explícita, tomada después de que se explicara el riesgo de
+  seguridad concreto que implica.
 - No implementar Unit of Work como patrón separado (el `DbContext` ya cumple
   ese rol) ni un repositorio genérico (cada entidad tiene necesidades de
   consulta distintas).

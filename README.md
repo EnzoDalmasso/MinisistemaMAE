@@ -1,20 +1,25 @@
 # Mini sistema de gestión de turnos — Clínica
 
 Prueba técnica para MAE Software: un sistema de gestión de turnos para una
-clínica, con autenticación por rol (Administrador / Profesional), gestión de
-pacientes y profesionales, y la regla de negocio central de todo sistema de
-turnos: **un profesional no puede tener dos turnos activos en la misma fecha
-y horario**, resuelta también a nivel de base de datos para cubrir
-condiciones de carrera.
+clínica, con autenticación por rol (Administrador / Profesional / Paciente),
+gestión de pacientes y profesionales, y la regla de negocio central de todo
+sistema de turnos: **un profesional no puede tener dos turnos activos en la
+misma fecha y horario**, resuelta también a nivel de base de datos para
+cubrir condiciones de carrera.
 
 ## Descripción
 
-El sistema resuelve la operación diaria de agendar turnos en una clínica:
+El sistema resuelve la operación diaria de agendar turnos en una clínica,
+con 3 paneles según quién esté usando el sistema:
 
 - Un **Administrador** gestiona pacientes, profesionales y turnos: puede
   crear, modificar, cancelar y ver la agenda completa.
 - Cada **Profesional** inicia sesión y ve únicamente sus propios turnos —
-  nunca los de otro profesional, sin importar lo que pida el frontend.
+  nunca los de otro profesional, sin importar lo que pida el frontend — y
+  puede marcarlos como Confirmado/Atendido/Cancelado.
+- Cada **Paciente** accede con su nombre, apellido y DNI (sin contraseña,
+  ver "Decisiones técnicas") y puede pedir un turno propio, reprogramarlo o
+  cancelarlo, siempre respetando la disponibilidad del profesional elegido.
 
 Todos los datos de la demo (pacientes, profesionales, credenciales) son
 ficticios.
@@ -191,22 +196,32 @@ despliegue real se sobreescriben con las variables de entorno
 `DatosSemilla__ContrasenaAdministrador` / `DatosSemilla__ContrasenaProfesional`
 (ver `Backend/.env.example`).
 
+Para probar el panel del paciente no hace falta ninguna contraseña: entrá a
+`/acceso-paciente` con cualquier nombre/apellido/DNI (7 u 8 dígitos) — se
+crea la cuenta en el momento. El seed también deja cargado un paciente ya
+autogestionado (ver `SeedDeDatos.cs` para su DNI) para probar el caso de
+"paciente que ya tenía cuenta".
+
 El seed también carga 3 profesionales, 5 pacientes y 6 turnos ficticios en
 distintos estados, para que las pantallas no arranquen vacías.
 
 ## Funcionalidades implementadas
 
 - Login con JWT, autorización por rol enforced en el backend (no solo
-  ocultando botones).
+  ocultando botones). 3 roles: Administrador, Profesional, Paciente.
 - CRUD de pacientes y profesionales (alta, listado, edición) — Administrador.
 - Gestión completa de turnos: crear, listar con filtros (fecha, profesional,
   estado), modificar, cancelar — Administrador.
-- Consulta de turnos propios — Profesional (sin acceso a los de otros
-  profesionales, verificado tanto en el listado como al pedir un turno por id).
+- Consulta y cambio de estado (Confirmado/Atendido/Cancelado) de turnos
+  propios — Profesional (sin acceso a los de otros profesionales, verificado
+  tanto en el listado como al pedir/modificar un turno por id).
+- Acceso autogestionado del paciente (Nombre + Apellido + DNI, sin
+  contraseña — ver Decisiones técnicas), pedido de turno propio,
+  reprogramación y cancelación — Paciente.
 - Regla de disponibilidad de turnos, con manejo explícito de condiciones de
   carrera (ver más abajo).
 - Panel con resumen por rol (conteos globales para Administrador, próximos
-  turnos para Profesional).
+  turnos propios para Profesional y Paciente).
 - Validaciones en frontend y backend (el backend es la autoridad final).
 - Manejo global de errores con códigos HTTP y mensajes consistentes.
 - Tests automatizados de las reglas de negocio críticas.
@@ -232,20 +247,34 @@ dependencia extra para esto no se justifica.
 ### Autenticación y autorización
 
 JWT Bearer, contraseñas hasheadas con BCrypt (salt aleatorio incluido en el
-hash, no se administra por separado). El token incluye el rol y, para
-profesionales, un claim propio `profesionalId`.
+hash, no se administra por separado). El token incluye el rol y, según
+corresponda, un claim propio `profesionalId` o `pacienteId`.
 
 La autorización real está en el backend:
 - `[Authorize(Roles = "Administrador")]` en los endpoints exclusivos de admin.
 - En `GET /api/turnos` y `GET /api/turnos/{id}`, si el usuario autenticado es
-  Profesional, `ServicioTurnos` **ignora cualquier `profesionalId` que venga
-  en el filtro** y fuerza el propio (tomado del claim del token, no de un
-  parámetro del cliente). Pedir el turno de otro profesional por id devuelve
-  403, no un simple filtro silencioso.
+  Profesional o Paciente, `ServicioTurnos` **ignora cualquier
+  `profesionalId`/`PacienteId` que venga en el filtro o en el body** y fuerza
+  el propio (tomado del claim del token, no de un parámetro del cliente).
+  Pedir/crear/reprogramar el turno de otro devuelve 403, no un simple
+  filtro silencioso.
 
 El frontend oculta pantallas/botones según el rol solo por UX; si alguien
 llama a la API directamente sin los permisos correspondientes, el backend
 igual la rechaza.
+
+**Login del paciente sin contraseña — decisión explícita del cliente de este
+proyecto.** El paciente accede solo con Nombre + Apellido + DNI: si el DNI ya
+está registrado entra a esa cuenta, si no, se crea en el momento. Se le
+planteó al cliente el riesgo (cualquiera que sepa el nombre y DNI de otra
+persona podría ver/modificar sus turnos) y confirmó igualmente esta opción
+por simplicidad. Internamente se reutiliza toda la infraestructura de
+JWT/BCrypt existente: el DNI funciona como `NombreUsuario` **y** como
+contraseña (se hashea igual que cualquier otra), en vez de abrir un
+mecanismo de autenticación paralelo sin hashear nada. El alcance del daño
+si se abusara de esto queda acotado a los propios turnos de ese paciente
+(no hay escalamiento de rol posible). Ver "Mejoras futuras" para cómo se
+resolvería esto en un sistema real.
 
 ### Regla de disponibilidad de turnos (la regla crítica)
 
@@ -274,6 +303,12 @@ Adicionalmente, `Turno` usa la columna de sistema `xmin` de PostgreSQL como
 token de concurrencia optimista (sin agregar una columna propia), para
 detectar si dos administradores editan el mismo turno al mismo tiempo
 (`DbUpdateConcurrencyException` → también `409`).
+
+Esta misma verificación se reutiliza cuando el **paciente** reprograma su
+propio turno (`PUT /api/turnos/{id}/reprogramar`, excluyendo el turno que se
+está editando) y cuando el **profesional** cambia el estado de uno propio
+(`PATCH /api/turnos/{id}/estado`): ningún camino de escritura sobre `Turno`
+evita el chequeo de disponibilidad ni el índice único que lo respalda.
 
 ### Validaciones
 
@@ -405,9 +440,16 @@ Pasos generales:
 Funcionalidades fuera de alcance por el límite de tiempo, priorizadas según
 impacto:
 
+- **Contraseña real (u otro segundo factor) para el login de pacientes.**
+  Es la mejora de seguridad más importante pendiente: hoy el DNI alcanza
+  para entrar, una decisión explícita del cliente para esta demo (ver
+  "Decisiones técnicas") que en un sistema real no debería sostenerse tal cual.
+- Fusión/deduplicación de un paciente cargado por el Administrador (sin DNI)
+  con el mismo paciente autogestionándose después — hoy quedan como dos
+  registros separados.
 - Paginación en los listados (hoy no hace falta por el volumen de datos de
   la demo).
-- Refresh tokens y recuperación de contraseña.
+- Refresh tokens y recuperación de contraseña (para Administrador/Profesional).
 - Horarios laborales configurables por profesional y duración de turnos
   (hoy el horario de atención es un rango fijo 07:00–21:00 validado
   globalmente).
