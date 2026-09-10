@@ -218,6 +218,11 @@ distintos estados, para que las pantallas no arranquen vacías.
 - Acceso autogestionado del paciente (Nombre + Apellido + DNI, sin
   contraseña — ver Decisiones técnicas), pedido de turno propio,
   reprogramación y cancelación — Paciente.
+- Al pedir o reprogramar un turno, se elige de una grilla de horarios
+  realmente disponibles (no se tipea un horario a mano) calculada según la
+  duración de turno configurada del profesional. Esa duración (5-180 min,
+  por defecto 30) la modifica el propio profesional para sí mismo, o el
+  administrador para cualquiera.
 - Regla de disponibilidad de turnos, con manejo explícito de condiciones de
   carrera (ver más abajo).
 - Panel con resumen por rol (conteos globales para Administrador, próximos
@@ -450,9 +455,9 @@ impacto:
 - Paginación en los listados (hoy no hace falta por el volumen de datos de
   la demo).
 - Refresh tokens y recuperación de contraseña (para Administrador/Profesional).
-- Horarios laborales configurables por profesional y duración de turnos
-  (hoy el horario de atención es un rango fijo 07:00–21:00 validado
-  globalmente).
+- Horario de atención configurable (hoy `07:00–21:00` es un rango fijo
+  global, en `HorarioClinica`); lo que sí es configurable por profesional
+  es la duración de cada turno dentro de ese rango.
 - Feriados y bloqueo manual de horarios.
 - Auditoría de cambios sobre turnos (quién modificó qué y cuándo).
 - Notificaciones/recordatorios por email.
