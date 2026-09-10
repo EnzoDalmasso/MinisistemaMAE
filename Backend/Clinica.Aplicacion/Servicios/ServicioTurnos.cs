@@ -21,6 +21,8 @@ public class ServicioTurnos : IServicioTurnos
     private readonly IUsuarioActual _usuarioActual;
     private readonly IValidator<CrearTurnoDto> _validadorCrear;
     private readonly IValidator<ActualizarTurnoDto> _validadorActualizar;
+    private readonly IValidator<ReprogramarTurnoDto> _validadorReprogramar;
+    private readonly IValidator<CambiarEstadoTurnoDto> _validadorCambiarEstado;
 
     public ServicioTurnos(
         IRepositorioTurnos repositorioTurnos,
@@ -28,7 +30,9 @@ public class ServicioTurnos : IServicioTurnos
         IRepositorioProfesionales repositorioProfesionales,
         IUsuarioActual usuarioActual,
         IValidator<CrearTurnoDto> validadorCrear,
-        IValidator<ActualizarTurnoDto> validadorActualizar)
+        IValidator<ActualizarTurnoDto> validadorActualizar,
+        IValidator<ReprogramarTurnoDto> validadorReprogramar,
+        IValidator<CambiarEstadoTurnoDto> validadorCambiarEstado)
     {
         _repositorioTurnos = repositorioTurnos;
         _repositorioPacientes = repositorioPacientes;
@@ -36,18 +40,25 @@ public class ServicioTurnos : IServicioTurnos
         _usuarioActual = usuarioActual;
         _validadorCrear = validadorCrear;
         _validadorActualizar = validadorActualizar;
+        _validadorReprogramar = validadorReprogramar;
+        _validadorCambiarEstado = validadorCambiarEstado;
     }
 
     public async Task<List<TurnoDto>> ObtenerAsync(TurnoFiltroDto filtro, CancellationToken cancellationToken = default)
     {
-        // Regla de autorización crítica: si el usuario autenticado es Profesional,
-        // se ignora cualquier ProfesionalId que haya llegado en el filtro y se
-        // fuerza el propio. Nunca se confía en el query string para esto.
+        // Regla de autorización crítica: si el usuario autenticado es Profesional
+        // o Paciente, se ignora cualquier filtro que haya llegado y se fuerza el
+        // propio ProfesionalId/PacienteId. Nunca se confía en el query string para esto.
         var profesionalId = _usuarioActual.Rol == RolUsuario.Profesional
             ? _usuarioActual.ProfesionalId
             : filtro.ProfesionalId;
 
-        var turnos = await _repositorioTurnos.BuscarAsync(profesionalId, filtro.Fecha, filtro.Estado, cancellationToken: cancellationToken);
+        var pacienteId = _usuarioActual.Rol == RolUsuario.Paciente
+            ? _usuarioActual.PacienteId
+            : null;
+
+        var turnos = await _repositorioTurnos.BuscarAsync(
+            profesionalId, filtro.Fecha, filtro.Estado, pacienteId: pacienteId, cancellationToken: cancellationToken);
         return turnos.Select(TurnoMapeador.ADto).ToList();
     }
 
@@ -63,12 +74,19 @@ public class ServicioTurnos : IServicioTurnos
     public async Task<TurnoDto> CrearAsync(CrearTurnoDto dto, CancellationToken cancellationToken = default)
     {
         await _validadorCrear.ValidarYLanzarAsync(dto, cancellationToken);
-        await VerificarExistenciaAsync(dto.PacienteId, dto.ProfesionalId, cancellationToken);
+
+        // Si es un paciente autogestionándose, el turno siempre es para sí
+        // mismo: se ignora cualquier PacienteId que haya llegado en el body.
+        var pacienteId = _usuarioActual.Rol == RolUsuario.Paciente
+            ? ObtenerPacienteIdPropio()
+            : dto.PacienteId;
+
+        await VerificarExistenciaAsync(pacienteId, dto.ProfesionalId, cancellationToken);
         await VerificarDisponibilidadAsync(dto.ProfesionalId, dto.Fecha, dto.Horario, idExcluir: null, cancellationToken);
 
         var turno = new Turno
         {
-            PacienteId = dto.PacienteId,
+            PacienteId = pacienteId,
             ProfesionalId = dto.ProfesionalId,
             Fecha = dto.Fecha,
             Horario = dto.Horario,
@@ -119,11 +137,67 @@ public class ServicioTurnos : IServicioTurnos
         var turno = await _repositorioTurnos.ObtenerPorIdAsync(id, cancellationToken)
             ?? throw new ExcepcionNoEncontrado("No se encontró el turno solicitado.");
 
+        // Permitido para Administrador (cualquier turno) y Paciente (solo el
+        // propio); el controlador ya bloquea a Profesional en este endpoint.
+        VerificarPertenencia(turno);
+
         turno.Estado = EstadoTurno.Cancelado;
         turno.FechaModificacion = DateTime.UtcNow;
 
         await _repositorioTurnos.ActualizarAsync(turno, cancellationToken);
         return TurnoMapeador.ADto(turno);
+    }
+
+    public async Task<TurnoDto> ReprogramarAsync(int id, ReprogramarTurnoDto dto, CancellationToken cancellationToken = default)
+    {
+        await _validadorReprogramar.ValidarYLanzarAsync(dto, cancellationToken);
+
+        var turno = await _repositorioTurnos.ObtenerPorIdAsync(id, cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el turno solicitado.");
+
+        VerificarPertenencia(turno);
+
+        if (turno.Estado is EstadoTurno.Cancelado or EstadoTurno.Atendido)
+        {
+            throw new ExcepcionConflicto("No se puede reprogramar un turno cancelado o ya atendido.");
+        }
+
+        await VerificarDisponibilidadAsync(turno.ProfesionalId, dto.Fecha, dto.Horario, idExcluir: id, cancellationToken);
+
+        turno.Fecha = dto.Fecha;
+        turno.Horario = dto.Horario;
+        turno.FechaModificacion = DateTime.UtcNow;
+
+        await _repositorioTurnos.ActualizarAsync(turno, cancellationToken);
+
+        var actualizado = await _repositorioTurnos.ObtenerPorIdAsync(turno.Id, cancellationToken) ?? turno;
+        return TurnoMapeador.ADto(actualizado);
+    }
+
+    public async Task<TurnoDto> CambiarEstadoAsync(int id, CambiarEstadoTurnoDto dto, CancellationToken cancellationToken = default)
+    {
+        await _validadorCambiarEstado.ValidarYLanzarAsync(dto, cancellationToken);
+
+        var turno = await _repositorioTurnos.ObtenerPorIdAsync(id, cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el turno solicitado.");
+
+        if (_usuarioActual.Rol == RolUsuario.Profesional && turno.ProfesionalId != _usuarioActual.ProfesionalId)
+        {
+            throw new ExcepcionProhibido("No tiene permiso para modificar este turno.");
+        }
+
+        if (dto.Estado != EstadoTurno.Cancelado)
+        {
+            await VerificarDisponibilidadAsync(turno.ProfesionalId, turno.Fecha, turno.Horario, idExcluir: id, cancellationToken);
+        }
+
+        turno.Estado = dto.Estado;
+        turno.FechaModificacion = DateTime.UtcNow;
+
+        await _repositorioTurnos.ActualizarAsync(turno, cancellationToken);
+
+        var actualizado = await _repositorioTurnos.ObtenerPorIdAsync(turno.Id, cancellationToken) ?? turno;
+        return TurnoMapeador.ADto(actualizado);
     }
 
     private void VerificarPertenencia(Turno turno)
@@ -132,7 +206,15 @@ public class ServicioTurnos : IServicioTurnos
         {
             throw new ExcepcionProhibido("No tiene permiso para acceder a este turno.");
         }
+
+        if (_usuarioActual.Rol == RolUsuario.Paciente && turno.PacienteId != _usuarioActual.PacienteId)
+        {
+            throw new ExcepcionProhibido("No tiene permiso para acceder a este turno.");
+        }
     }
+
+    private int ObtenerPacienteIdPropio() =>
+        _usuarioActual.PacienteId ?? throw new ExcepcionProhibido("La cuenta no tiene un paciente asociado.");
 
     private async Task VerificarExistenciaAsync(int pacienteId, int profesionalId, CancellationToken cancellationToken)
     {

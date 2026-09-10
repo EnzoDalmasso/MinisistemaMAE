@@ -7,7 +7,7 @@ namespace Clinica.API.Controllers;
 
 [ApiController]
 [Route("api/profesionales")]
-[Authorize(Roles = "Administrador")]
+[Authorize]
 public class ProfesionalesController : ControllerBase
 {
     private readonly IServicioProfesionales _servicio;
@@ -17,6 +17,9 @@ public class ProfesionalesController : ControllerBase
         _servicio = servicio;
     }
 
+    // Cualquier rol autenticado puede listar profesionales: no expone datos
+    // sensibles (solo nombre/especialidad) y el paciente lo necesita para
+    // elegir con quién pedir su turno.
     [HttpGet]
     public async Task<ActionResult<List<ProfesionalDto>>> ObtenerTodos(CancellationToken cancellationToken)
     {
@@ -24,6 +27,7 @@ public class ProfesionalesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<ProfesionalDto>> Crear([FromBody] CrearProfesionalDto dto, CancellationToken cancellationToken)
     {
         var profesional = await _servicio.CrearAsync(dto, cancellationToken);
@@ -31,6 +35,7 @@ public class ProfesionalesController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<ProfesionalDto>> Actualizar(int id, [FromBody] ActualizarProfesionalDto dto, CancellationToken cancellationToken)
     {
         return Ok(await _servicio.ActualizarAsync(id, dto, cancellationToken));
