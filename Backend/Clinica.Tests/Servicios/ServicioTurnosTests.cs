@@ -435,4 +435,41 @@ public class ServicioTurnosTests : IDisposable
 
         Assert.Contains(new TimeOnly(9, 0), disponibles);
     }
+
+    // Defensa en profundidad: aunque el frontend arma el "Nuevo turno" a
+    // partir de /horarios-disponibles (que ya filtra los horarios pasados),
+    // el validador también lo rechaza para quien le pegue directo a la API.
+    [Fact]
+    public async Task CrearAsync_ConFechaDeHoyYHorarioYaPasado_LanzaValidacion()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var servicio = CrearServicio(contexto);
+
+        var dto = new CrearTurnoDto
+        {
+            PacienteId = paciente.Id,
+            ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now),
+            Horario = TimeOnly.FromDateTime(DateTime.Now).AddMinutes(-1)
+        };
+
+        await Assert.ThrowsAsync<ExcepcionValidacion>(() => servicio.CrearAsync(dto, CancellationToken.None));
+    }
+
+    // La grilla de hoy no debe ofrecer horarios que ya pasaron (antes se
+    // seguían mostrando turnos "disponibles" de horas ya vencidas del día).
+    [Fact]
+    public async Task ObtenerHorariosDisponiblesAsync_ConFechaDeHoy_NoOfreceHorariosYaPasados()
+    {
+        using var contexto = CrearContexto();
+        var profesional = await AgregarProfesionalAsync(contexto);
+        var servicio = CrearServicio(contexto);
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        var disponibles = await servicio.ObtenerHorariosDisponiblesAsync(profesional.Id, hoy, cancellationToken: CancellationToken.None);
+
+        var ahora = TimeOnly.FromDateTime(DateTime.Now);
+        Assert.All(disponibles, horario => Assert.True(horario > ahora, $"{horario} ya pasó (ahora: {ahora})."));
+    }
 }

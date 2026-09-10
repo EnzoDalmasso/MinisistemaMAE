@@ -223,13 +223,20 @@ public class ServicioTurnos : IServicioTurnos
         var duracion = TimeSpan.FromMinutes(profesional.DuracionTurnoMinutos);
         var disponibles = new List<TimeOnly>();
 
+        // Si la fecha consultada es hoy, además de los ocupados hay que
+        // descartar los horarios que ya pasaron (si no, se seguían ofreciendo
+        // turnos "disponibles" a las 09:00 de un día que ya está a las 16:00).
+        var ahora = DateTime.Now;
+        var horarioMinimo = fecha == DateOnly.FromDateTime(ahora) ? TimeOnly.FromDateTime(ahora) : TimeOnly.MinValue;
+
         // Genera la grilla completa (apertura -> cierre, de a "duracion") y
-        // descarta los horarios que ya tienen un turno activo. El último
-        // horario ofrecido es el último que termina sin pasarse del cierre.
+        // descarta los horarios que ya tienen un turno activo o que ya
+        // pasaron. El último horario ofrecido es el último que termina sin
+        // pasarse del cierre.
         var horarioActual = HorarioClinica.Apertura;
         while (horarioActual.Add(duracion) <= HorarioClinica.Cierre)
         {
-            if (!ocupadosPorHorario.Contains(horarioActual))
+            if (horarioActual > horarioMinimo && !ocupadosPorHorario.Contains(horarioActual))
             {
                 disponibles.Add(horarioActual);
             }

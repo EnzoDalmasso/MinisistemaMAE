@@ -16,6 +16,8 @@ public class ReprogramarTurnoDtoValidador : AbstractValidator<ReprogramarTurnoDt
 
         RuleFor(t => t.Horario)
             .InclusiveBetween(HorarioClinica.Apertura, HorarioClinica.Cierre)
-            .WithMessage($"El horario debe estar entre las {HorarioClinica.Apertura:HH\\:mm} y las {HorarioClinica.Cierre:HH\\:mm}.");
+            .WithMessage($"El horario debe estar entre las {HorarioClinica.Apertura:HH\\:mm} y las {HorarioClinica.Cierre:HH\\:mm}.")
+            .Must((dto, horario) => dto.Fecha != DateOnly.FromDateTime(DateTime.Now) || horario > TimeOnly.FromDateTime(DateTime.Now))
+            .WithMessage("No se puede agendar un turno en un horario que ya pasó.");
     }
 }

@@ -21,6 +21,11 @@ public class CrearTurnoDtoValidador : AbstractValidator<CrearTurnoDto>
 
         RuleFor(t => t.Horario)
             .InclusiveBetween(HorarioClinica.Apertura, HorarioClinica.Cierre)
-            .WithMessage($"El horario debe estar entre las {HorarioClinica.Apertura:HH\\:mm} y las {HorarioClinica.Cierre:HH\\:mm}.");
+            .WithMessage($"El horario debe estar entre las {HorarioClinica.Apertura:HH\\:mm} y las {HorarioClinica.Cierre:HH\\:mm}.")
+            // Si la fecha es hoy, tampoco se permite un horario que ya pasó
+            // (la grilla de /horarios-disponibles ya los excluye, pero esto
+            // cubre a quien le pegue directo a la API sin pasar por ahí).
+            .Must((dto, horario) => dto.Fecha != DateOnly.FromDateTime(DateTime.Now) || horario > TimeOnly.FromDateTime(DateTime.Now))
+            .WithMessage("No se puede agendar un turno en un horario que ya pasó.");
     }
 }
