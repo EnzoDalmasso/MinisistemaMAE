@@ -1,4 +1,4 @@
-import type { GuardarProfesionalDto, Profesional } from '../modelos/profesional';
+import type { CrearProfesionalDto, GuardarProfesionalDto, Profesional } from '../modelos/profesional';
 import clienteApi from './clienteApi';
 
 export const profesionalesServicio = {
@@ -7,7 +7,7 @@ export const profesionalesServicio = {
     return data;
   },
 
-  crear: async (dto: GuardarProfesionalDto): Promise<Profesional> => {
+  crear: async (dto: CrearProfesionalDto): Promise<Profesional> => {
     const { data } = await clienteApi.post<Profesional>('/profesionales', dto);
     return data;
   },

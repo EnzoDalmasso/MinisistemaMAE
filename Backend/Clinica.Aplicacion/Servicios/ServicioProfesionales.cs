@@ -12,20 +12,26 @@ namespace Clinica.Aplicacion.Servicios;
 public class ServicioProfesionales : IServicioProfesionales
 {
     private readonly IRepositorioProfesionales _repositorio;
+    private readonly IRepositorioUsuarios _repositorioUsuarios;
     private readonly IUsuarioActual _usuarioActual;
+    private readonly IHasheadorContrasenas _hasheador;
     private readonly IValidator<CrearProfesionalDto> _validadorCrear;
     private readonly IValidator<ActualizarProfesionalDto> _validadorActualizar;
     private readonly IValidator<ActualizarDuracionTurnoDto> _validadorDuracion;
 
     public ServicioProfesionales(
         IRepositorioProfesionales repositorio,
+        IRepositorioUsuarios repositorioUsuarios,
         IUsuarioActual usuarioActual,
+        IHasheadorContrasenas hasheador,
         IValidator<CrearProfesionalDto> validadorCrear,
         IValidator<ActualizarProfesionalDto> validadorActualizar,
         IValidator<ActualizarDuracionTurnoDto> validadorDuracion)
     {
         _repositorio = repositorio;
+        _repositorioUsuarios = repositorioUsuarios;
         _usuarioActual = usuarioActual;
+        _hasheador = hasheador;
         _validadorCrear = validadorCrear;
         _validadorActualizar = validadorActualizar;
         _validadorDuracion = validadorDuracion;
@@ -41,6 +47,12 @@ public class ServicioProfesionales : IServicioProfesionales
     {
         await _validadorCrear.ValidarYLanzarAsync(dto, cancellationToken);
 
+        var nombreUsuario = dto.NombreUsuario.Trim();
+        if (await _repositorioUsuarios.ObtenerPorNombreUsuarioAsync(nombreUsuario, cancellationToken) is not null)
+        {
+            throw new ExcepcionConflicto("Ese nombre de usuario ya está en uso.");
+        }
+
         var profesional = new Profesional
         {
             Nombre = dto.Nombre.Trim(),
@@ -51,6 +63,19 @@ public class ServicioProfesionales : IServicioProfesionales
         };
 
         await _repositorio.AgregarAsync(profesional, cancellationToken);
+
+        // Se crea en el mismo paso el usuario con el que el profesional va a
+        // loguearse y ver su propia agenda; sin esto, quedaba cargado en el
+        // sistema pero sin forma de acceder.
+        await _repositorioUsuarios.AgregarAsync(new Usuario
+        {
+            NombreUsuario = nombreUsuario,
+            ContrasenaHash = _hasheador.Hashear(dto.Contrasena),
+            Rol = RolUsuario.Profesional,
+            ProfesionalId = profesional.Id,
+            FechaCreacion = DateTime.UtcNow
+        }, cancellationToken);
+
         return ADto(profesional);
     }
 

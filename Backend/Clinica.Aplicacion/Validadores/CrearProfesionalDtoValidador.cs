@@ -22,5 +22,14 @@ public class CrearProfesionalDtoValidador : AbstractValidator<CrearProfesionalDt
         RuleFor(p => p.DuracionTurnoMinutos)
             .InclusiveBetween(5, 180).WithMessage("La duración del turno debe estar entre 5 y 180 minutos.")
             .Must(valor => valor % 5 == 0).WithMessage("La duración del turno debe ser múltiplo de 5 minutos.");
+
+        RuleFor(p => p.NombreUsuario)
+            .NotEmpty().WithMessage("El usuario es obligatorio.")
+            .MaximumLength(50).WithMessage("El usuario no puede superar los 50 caracteres.");
+
+        RuleFor(p => p.Contrasena)
+            .NotEmpty().WithMessage("La contraseña es obligatoria.")
+            .MinimumLength(6).WithMessage("La contraseña debe tener al menos 6 caracteres.")
+            .MaximumLength(100).WithMessage("La contraseña no puede superar los 100 caracteres.");
     }
 }
