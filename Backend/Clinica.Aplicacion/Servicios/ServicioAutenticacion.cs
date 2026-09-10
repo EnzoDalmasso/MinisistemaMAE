@@ -108,7 +108,15 @@ public class ServicioAutenticacion : IServicioAutenticacion
             Rol = usuario.Rol.ToString(),
             ProfesionalId = usuario.ProfesionalId,
             PacienteId = usuario.PacienteId,
-            NombreCompleto = usuario.Paciente is not null ? $"{usuario.Paciente.Nombre} {usuario.Paciente.Apellido}" : null
+            // Para Paciente y Profesional se manda el nombre real (no el
+            // nombreUsuario, que para Paciente es su DNI y para Profesional
+            // suele ser un usuario técnico genérico): el frontend lo usa para
+            // mostrar "con quién está logueado" en vez de un usuario opaco.
+            NombreCompleto = usuario.Paciente is not null
+                ? $"{usuario.Paciente.Nombre} {usuario.Paciente.Apellido}"
+                : usuario.Profesional is not null
+                    ? $"{usuario.Profesional.Nombre} {usuario.Profesional.Apellido}"
+                    : null
         };
     }
 }

@@ -13,8 +13,10 @@ export function DisenioPrincipal() {
   const esAdministrador = sesion?.rol === 'Administrador';
   const esPaciente = sesion?.rol === 'Paciente';
 
-  // Para un paciente, "nombreUsuario" es su DNI: se muestra su nombre real
-  // en su lugar cuando está disponible.
+  // "nombreUsuario" es un login técnico (para Paciente, directamente su DNI;
+  // para Profesional, un usuario genérico): se muestra el nombre real de la
+  // persona cuando está disponible, para que quede claro con qué cuenta
+  // (de qué paciente o profesional) se está logueado.
   const nombreAMostrar = sesion?.nombreCompleto ?? sesion?.nombreUsuario ?? '';
 
   const manejarCerrarSesion = () => {
