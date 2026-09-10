@@ -180,7 +180,3 @@ hizo falta. Detalle completo en [DOCUMENTACION_IA.md](DOCUMENTACION_IA.md).
 - Refresh tokens y recuperación de contraseña.
 - Notificaciones/recordatorios por email.
 - Tests de integración end-to-end sobre el pipeline HTTP completo.
-
-## Video
-
-Demostración del sistema: *(agregar enlace antes de entregar)*.
