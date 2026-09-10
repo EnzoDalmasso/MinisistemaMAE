@@ -1,0 +1,25 @@
+# .NET
+Backend/**/bin/
+Backend/**/obj/
+*.user
+
+# Node / Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# Configuración local con datos sensibles (ver appsettings.Development.json en el repo:
+# solo contiene credenciales ficticias de desarrollo, pero un override local no debe subirse)
+Backend/Clinica.API/appsettings.Local.json
+Frontend/.env
+Frontend/.env.local
+
+# Editores / SO
+.vs/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
