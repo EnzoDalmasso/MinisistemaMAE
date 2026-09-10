@@ -13,13 +13,18 @@ El sistema resuelve la operación diaria de agendar turnos en una clínica,
 con 3 paneles según quién esté usando el sistema:
 
 - Un **Administrador** gestiona pacientes, profesionales y turnos: puede
-  crear, modificar, cancelar y ver la agenda completa.
+  crear, modificar, cancelar y ver la agenda completa. Un turno que carga
+  el Administrador arranca en `Pendiente` y lo confirma él mismo (puede
+  necesitar coordinarlo con el paciente antes).
 - Cada **Profesional** inicia sesión y ve únicamente sus propios turnos —
   nunca los de otro profesional, sin importar lo que pida el frontend — y
-  puede marcarlos como Confirmado/Atendido/Cancelado.
+  solo puede marcarlos como Atendido o Cancelado (registra qué pasó con la
+  cita; no toca los estados administrativos previos).
 - Cada **Paciente** accede con su nombre, apellido y DNI (sin contraseña,
   ver "Decisiones técnicas") y puede pedir un turno propio, reprogramarlo o
   cancelarlo, siempre respetando la disponibilidad del profesional elegido.
+  Como elige de una grilla que ya muestra disponibilidad real, su turno
+  queda `Confirmado` directamente (no pasa por `Pendiente`).
 
 Todos los datos de la demo (pacientes, profesionales, credenciales) son
 ficticios.
@@ -212,12 +217,14 @@ distintos estados, para que las pantallas no arranquen vacías.
 - CRUD de pacientes y profesionales (alta, listado, edición) — Administrador.
 - Gestión completa de turnos: crear, listar con filtros (fecha, profesional,
   estado), modificar, cancelar — Administrador.
-- Consulta y cambio de estado (Confirmado/Atendido/Cancelado) de turnos
-  propios — Profesional (sin acceso a los de otros profesionales, verificado
-  tanto en el listado como al pedir/modificar un turno por id).
+- Consulta y cambio de estado (Atendido/Cancelado) de turnos propios —
+  Profesional (sin acceso a los de otros profesionales, verificado tanto en
+  el listado como al pedir/modificar un turno por id; no puede tocar los
+  estados administrativos Pendiente/Confirmado).
 - Acceso autogestionado del paciente (Nombre + Apellido + DNI, sin
-  contraseña — ver Decisiones técnicas), pedido de turno propio,
-  reprogramación y cancelación — Paciente.
+  contraseña — ver Decisiones técnicas), pedido de turno propio (queda
+  Confirmado directamente, ver más abajo), reprogramación y cancelación —
+  Paciente.
 - Al pedir o reprogramar un turno, se elige de una grilla de horarios
   realmente disponibles (no se tipea un horario a mano) calculada según la
   duración de turno configurada del profesional. Esa duración (5-180 min,
@@ -280,6 +287,15 @@ mecanismo de autenticación paralelo sin hashear nada. El alcance del daño
 si se abusara de esto queda acotado a los propios turnos de ese paciente
 (no hay escalamiento de rol posible). Ver "Mejoras futuras" para cómo se
 resolvería esto en un sistema real.
+
+**Estado inicial de un turno nuevo — distinto según quién lo crea.** Un
+turno cargado por el Administrador arranca en `Pendiente`: puede necesitar
+coordinarlo con el paciente antes de confirmarlo. Un turno pedido por el
+propio **paciente** arranca directamente en `Confirmado`: el paciente eligió
+un horario de una grilla que ya refleja disponibilidad real (ver
+"Regla de disponibilidad de turnos" abajo), así que no hay ningún paso
+manual pendiente. Esta regla vive en `ServicioTurnos.CrearAsync`, no en el
+DTO que manda el cliente (`CrearTurnoDto` no tiene campo `Estado`).
 
 ### Regla de disponibilidad de turnos (la regla crítica)
 

@@ -1,7 +1,8 @@
 namespace Clinica.Aplicacion.DTOs.Turnos;
 
-// No incluye Estado a propósito: todo turno nuevo arranca en "Pendiente".
-// Esa regla la fija el servicio, no el cliente.
+// No incluye Estado a propósito: lo fija el servicio, no el cliente (ver
+// ServicioTurnos.CrearAsync — Pendiente si lo carga el Administrador,
+// Confirmado si lo pide el propio paciente).
 public class CrearTurnoDto
 {
     public int PacienteId { get; set; }

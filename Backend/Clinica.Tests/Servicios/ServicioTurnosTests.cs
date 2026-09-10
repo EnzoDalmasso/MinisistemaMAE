@@ -68,7 +68,7 @@ public class ServicioTurnosTests : IDisposable
 
     // 1. Crear un turno válido.
     [Fact]
-    public async Task CrearAsync_ConDatosValidos_CreaElTurnoEnEstadoPendiente()
+    public async Task CrearAsync_ComoAdministrador_CreaElTurnoEnEstadoPendiente()
     {
         using var contexto = CrearContexto();
         var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
@@ -87,6 +87,28 @@ public class ServicioTurnosTests : IDisposable
         Assert.Equal(EstadoTurno.Pendiente, resultado.Estado);
         Assert.Equal(paciente.Id, resultado.PacienteId);
         Assert.Equal(profesional.Id, resultado.ProfesionalId);
+    }
+
+    // El paciente elige de una grilla que ya refleja disponibilidad real, así
+    // que su turno queda Confirmado directamente (no pasa por Pendiente).
+    [Fact]
+    public async Task CrearAsync_ComoPaciente_CreaElTurnoEnEstadoConfirmado()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var servicio = CrearServicio(contexto, RolUsuario.Paciente, pacienteId: paciente.Id);
+
+        var dto = new CrearTurnoDto
+        {
+            PacienteId = paciente.Id,
+            ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1),
+            Horario = new TimeOnly(10, 0)
+        };
+
+        var resultado = await servicio.CrearAsync(dto, CancellationToken.None);
+
+        Assert.Equal(EstadoTurno.Confirmado, resultado.Estado);
     }
 
     // 2. Rechazar un turno duplicado (mismo profesional, fecha y horario).

@@ -91,7 +91,12 @@ public class ServicioTurnos : IServicioTurnos
             ProfesionalId = dto.ProfesionalId,
             Fecha = dto.Fecha,
             Horario = dto.Horario,
-            Estado = EstadoTurno.Pendiente,
+            // El paciente elige de una grilla que ya muestra disponibilidad
+            // real (ver ObtenerHorariosDisponiblesAsync), así que su turno
+            // queda Confirmado directamente: no hay ningún paso manual
+            // pendiente. El turno que carga el Administrador sí arranca en
+            // Pendiente, porque puede necesitar coordinarlo con el paciente.
+            Estado = _usuarioActual.Rol == RolUsuario.Paciente ? EstadoTurno.Confirmado : EstadoTurno.Pendiente,
             FechaCreacion = DateTime.UtcNow
         };
 
