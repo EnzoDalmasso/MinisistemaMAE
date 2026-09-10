@@ -1,4 +1,18 @@
-import { ActionIcon, Alert, Button, Center, Group, Loader, Modal, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import {
+  ActionIcon,
+  Alert,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Modal,
+  NumberInput,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconEdit, IconPlus } from '@tabler/icons-react';
@@ -7,7 +21,7 @@ import type { GuardarProfesionalDto, Profesional } from '../modelos/profesional'
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
 
-const VALORES_INICIALES: GuardarProfesionalDto = { nombre: '', apellido: '', especialidad: '' };
+const VALORES_INICIALES: GuardarProfesionalDto = { nombre: '', apellido: '', especialidad: '', duracionTurnoMinutos: 30 };
 
 export function PaginaProfesionales() {
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
@@ -26,6 +40,8 @@ export function PaginaProfesionales() {
         valor.trim().length === 0 ? 'El apellido es obligatorio.' : valor.length > 100 ? 'Máximo 100 caracteres.' : null,
       especialidad: (valor) =>
         valor.trim().length === 0 ? 'La especialidad es obligatoria.' : valor.length > 100 ? 'Máximo 100 caracteres.' : null,
+      duracionTurnoMinutos: (valor) =>
+        valor >= 5 && valor <= 180 && valor % 5 === 0 ? null : 'Debe ser un múltiplo de 5, entre 5 y 180 minutos.',
     },
   });
 
@@ -55,7 +71,12 @@ export function PaginaProfesionales() {
 
   const abrirModalEditar = (profesional: Profesional) => {
     setProfesionalEnEdicion(profesional);
-    form.setValues({ nombre: profesional.nombre, apellido: profesional.apellido, especialidad: profesional.especialidad });
+    form.setValues({
+      nombre: profesional.nombre,
+      apellido: profesional.apellido,
+      especialidad: profesional.especialidad,
+      duracionTurnoMinutos: profesional.duracionTurnoMinutos,
+    });
     form.clearErrors();
     setModalAbierto(true);
   };
@@ -110,13 +131,14 @@ export function PaginaProfesionales() {
               <Table.Th>Nombre</Table.Th>
               <Table.Th>Apellido</Table.Th>
               <Table.Th>Especialidad</Table.Th>
+              <Table.Th>Duración turno</Table.Th>
               <Table.Th w={80} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {profesionales.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={4}>
+                <Table.Td colSpan={5}>
                   <Text c="dimmed" ta="center" py="md">
                     Todavía no hay profesionales cargados.
                   </Text>
@@ -128,6 +150,7 @@ export function PaginaProfesionales() {
                   <Table.Td>{profesional.nombre}</Table.Td>
                   <Table.Td>{profesional.apellido}</Table.Td>
                   <Table.Td>{profesional.especialidad}</Table.Td>
+                  <Table.Td>{profesional.duracionTurnoMinutos} min</Table.Td>
                   <Table.Td>
                     <ActionIcon variant="subtle" onClick={() => abrirModalEditar(profesional)} aria-label="Editar profesional">
                       <IconEdit size={16} />
@@ -155,6 +178,15 @@ export function PaginaProfesionales() {
               maxLength={100}
               placeholder="Clínica Médica"
               {...form.getInputProps('especialidad')}
+            />
+            <NumberInput
+              label="Duración de cada turno (minutos)"
+              description="Define cada cuánto se ofrecen horarios al pedir un turno con este profesional."
+              required
+              min={5}
+              max={180}
+              step={5}
+              {...form.getInputProps('duracionTurnoMinutos')}
             />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalAbierto(false)}>

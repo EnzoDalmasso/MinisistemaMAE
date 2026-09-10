@@ -48,4 +48,14 @@ export const turnosServicio = {
     const { data } = await clienteApi.patch<Turno>(`/turnos/${id}/estado`, dto);
     return data;
   },
+
+  // Devuelve los horarios "HH:mm:ss" libres de ese profesional en esa fecha,
+  // según su duración de turno configurada. "excluirTurnoId" evita que el
+  // horario actual de un turno propio desaparezca al reprogramarlo/editarlo.
+  obtenerHorariosDisponibles: async (profesionalId: number, fecha: string, excluirTurnoId?: number): Promise<string[]> => {
+    const { data } = await clienteApi.get<string[]>('/turnos/horarios-disponibles', {
+      params: { profesionalId, fecha, excluirTurnoId },
+    });
+    return data;
+  },
 };

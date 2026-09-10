@@ -16,4 +16,9 @@ export const profesionalesServicio = {
     const { data } = await clienteApi.put<Profesional>(`/profesionales/${id}`, dto);
     return data;
   },
+
+  actualizarDuracionTurno: async (id: number, duracionTurnoMinutos: number): Promise<Profesional> => {
+    const { data } = await clienteApi.patch<Profesional>(`/profesionales/${id}/duracion-turno`, { duracionTurnoMinutos });
+    return data;
+  },
 };

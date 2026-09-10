@@ -3,10 +3,12 @@ export interface Profesional {
   nombre: string;
   apellido: string;
   especialidad: string;
+  duracionTurnoMinutos: number;
 }
 
 export interface GuardarProfesionalDto {
   nombre: string;
   apellido: string;
   especialidad: string;
+  duracionTurnoMinutos: number;
 }

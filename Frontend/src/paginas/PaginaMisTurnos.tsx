@@ -1,5 +1,5 @@
 import { ActionIcon, Alert, Button, Center, Group, Loader, Modal, Select, Stack, Table, Text, Title } from '@mantine/core';
-import { DateInput, TimeInput } from '@mantine/dates';
+import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -7,6 +7,7 @@ import { IconAlertCircle, IconCalendarOff, IconClockEdit, IconPlus } from '@tabl
 import { useEffect, useState } from 'react';
 import { EstadoTurnoBadge } from '../componentes/EstadoTurnoBadge';
 import { useAutenticacion } from '../hooks/useAutenticacion';
+import { useHorariosDisponibles } from '../hooks/useHorariosDisponibles';
 import type { Profesional } from '../modelos/profesional';
 import type { Turno } from '../modelos/turno';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
@@ -17,14 +18,14 @@ import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/maneja
 interface ValoresNuevoTurno {
   profesionalId: string;
   fecha: string | null;
-  horario: string;
+  horario: string | null;
 }
 
-const VALORES_INICIALES: ValoresNuevoTurno = { profesionalId: '', fecha: null, horario: '' };
+const VALORES_INICIALES: ValoresNuevoTurno = { profesionalId: '', fecha: null, horario: null };
 
 interface ValoresReprogramar {
   fecha: string | null;
-  horario: string;
+  horario: string | null;
 }
 
 // Un turno solo se puede reprogramar o cancelar mientras sigue "activo": uno
@@ -56,12 +57,23 @@ export function PaginaMisTurnos() {
   });
 
   const formReprogramar = useForm<ValoresReprogramar>({
-    initialValues: { fecha: null, horario: '' },
+    initialValues: { fecha: null, horario: null },
     validate: {
       fecha: (valor) => (valor ? null : 'La fecha es obligatoria.'),
       horario: (valor) => (valor ? null : 'El horario es obligatorio.'),
     },
   });
+
+  // La grilla de horarios se recalcula sola apenas hay profesional + fecha.
+  const { horarios: horariosNuevo, cargando: cargandoHorariosNuevo } = useHorariosDisponibles(
+    formNuevo.values.profesionalId,
+    formNuevo.values.fecha,
+  );
+  const { horarios: horariosReprogramar, cargando: cargandoHorariosReprogramar } = useHorariosDisponibles(
+    turnoAReprogramar?.profesionalId,
+    formReprogramar.values.fecha,
+    turnoAReprogramar?.id,
+  );
 
   const cargarTurnos = async () => {
     setCargando(true);
@@ -97,12 +109,11 @@ export function PaginaMisTurnos() {
 
     setGuardandoNuevo(true);
     try {
-      const horario = valores.horario.length === 5 ? `${valores.horario}:00` : valores.horario;
       await turnosServicio.crear({
         pacienteId: sesion?.pacienteId ?? 0,
         profesionalId: Number(valores.profesionalId),
         fecha: valores.fecha,
-        horario,
+        horario: valores.horario,
       });
       notifications.show({ color: 'green', message: 'Turno solicitado correctamente.' });
       setModalNuevoAbierto(false);
@@ -122,7 +133,7 @@ export function PaginaMisTurnos() {
 
   const abrirModalReprogramar = (turno: Turno) => {
     setTurnoAReprogramar(turno);
-    formReprogramar.setValues({ fecha: turno.fecha, horario: formatearHorario(turno.horario) });
+    formReprogramar.setValues({ fecha: turno.fecha, horario: turno.horario });
     formReprogramar.clearErrors();
   };
 
@@ -134,8 +145,7 @@ export function PaginaMisTurnos() {
 
     setReprogramando(true);
     try {
-      const horario = valores.horario.length === 5 ? `${valores.horario}:00` : valores.horario;
-      await turnosServicio.reprogramar(turnoAReprogramar.id, { fecha: valores.fecha, horario });
+      await turnosServicio.reprogramar(turnoAReprogramar.id, { fecha: valores.fecha, horario: valores.horario });
       notifications.show({ color: 'green', message: 'Turno reprogramado correctamente.' });
       setTurnoAReprogramar(null);
       await cargarTurnos();
@@ -178,6 +188,8 @@ export function PaginaMisTurnos() {
     value: String(p.id),
     label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
   }));
+
+  const aOpcionesHorario = (horarios: string[]) => horarios.map((h) => ({ value: h, label: formatearHorario(h) }));
 
   return (
     <>
@@ -261,6 +273,10 @@ export function PaginaMisTurnos() {
               searchable
               data={opcionesProfesionales}
               {...formNuevo.getInputProps('profesionalId')}
+              onChange={(valor) => {
+                formNuevo.setFieldValue('profesionalId', valor ?? '');
+                formNuevo.setFieldValue('horario', null); // la grilla cambia, no queda un horario viejo seleccionado
+              }}
             />
             <DateInput
               label="Fecha"
@@ -268,8 +284,27 @@ export function PaginaMisTurnos() {
               required
               minDate={new Date()}
               {...formNuevo.getInputProps('fecha')}
+              onChange={(valor) => {
+                formNuevo.setFieldValue('fecha', valor);
+                formNuevo.setFieldValue('horario', null);
+              }}
             />
-            <TimeInput label="Horario" required {...formNuevo.getInputProps('horario')} />
+            <Select
+              label="Horario"
+              placeholder={
+                !formNuevo.values.profesionalId || !formNuevo.values.fecha
+                  ? 'Elegí profesional y fecha primero'
+                  : cargandoHorariosNuevo
+                    ? 'Buscando horarios...'
+                    : horariosNuevo.length === 0
+                      ? 'No hay horarios libres ese día'
+                      : 'Seleccionar horario'
+              }
+              required
+              disabled={!formNuevo.values.profesionalId || !formNuevo.values.fecha || horariosNuevo.length === 0}
+              data={aOpcionesHorario(horariosNuevo)}
+              {...formNuevo.getInputProps('horario')}
+            />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalNuevoAbierto(false)}>
                 Cancelar
@@ -294,8 +329,19 @@ export function PaginaMisTurnos() {
               required
               minDate={new Date()}
               {...formReprogramar.getInputProps('fecha')}
+              onChange={(valor) => {
+                formReprogramar.setFieldValue('fecha', valor);
+                formReprogramar.setFieldValue('horario', null);
+              }}
             />
-            <TimeInput label="Nuevo horario" required {...formReprogramar.getInputProps('horario')} />
+            <Select
+              label="Nuevo horario"
+              placeholder={cargandoHorariosReprogramar ? 'Buscando horarios...' : 'Seleccionar horario'}
+              required
+              disabled={horariosReprogramar.length === 0}
+              data={aOpcionesHorario(horariosReprogramar)}
+              {...formReprogramar.getInputProps('horario')}
+            />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setTurnoAReprogramar(null)}>
                 Cancelar

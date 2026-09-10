@@ -6,13 +6,14 @@ import {
   Group,
   Loader,
   Modal,
+  NumberInput,
   Select,
   Stack,
   Table,
   Text,
   Title,
 } from '@mantine/core';
-import { DateInput, TimeInput } from '@mantine/dates';
+import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -20,6 +21,7 @@ import { IconAlertCircle, IconCalendarOff, IconEdit, IconPlus } from '@tabler/ic
 import { useEffect, useState } from 'react';
 import { EstadoTurnoBadge } from '../componentes/EstadoTurnoBadge';
 import { useAutenticacion } from '../hooks/useAutenticacion';
+import { useHorariosDisponibles } from '../hooks/useHorariosDisponibles';
 import type { Paciente } from '../modelos/paciente';
 import type { Profesional } from '../modelos/profesional';
 import { ESTADOS_TURNO, type EstadoTurno, type Turno, type TurnoFiltro } from '../modelos/turno';
@@ -36,7 +38,7 @@ interface ValoresFormularioTurno {
   // "AAAA-MM-DD" (no como objeto Date), que además es exactamente el formato
   // que espera el backend: no hace falta ninguna conversión intermedia.
   fecha: string | null;
-  horario: string;
+  horario: string | null;
   estado: EstadoTurno;
 }
 
@@ -44,7 +46,7 @@ const VALORES_INICIALES: ValoresFormularioTurno = {
   pacienteId: '',
   profesionalId: '',
   fecha: null,
-  horario: '',
+  horario: null,
   estado: 'Pendiente',
 };
 
@@ -68,6 +70,10 @@ export function PaginaTurnos() {
   const [turnoEnEdicion, setTurnoEnEdicion] = useState<Turno | null>(null);
   const [guardando, setGuardando] = useState(false);
 
+  const [duracionActual, setDuracionActual] = useState<number | null>(null);
+  const [duracionInput, setDuracionInput] = useState<number | ''>('');
+  const [guardandoDuracion, setGuardandoDuracion] = useState(false);
+
   const form = useForm<ValoresFormularioTurno>({
     initialValues: VALORES_INICIALES,
     validate: {
@@ -77,6 +83,15 @@ export function PaginaTurnos() {
       horario: (valor) => (valor ? null : 'El horario es obligatorio.'),
     },
   });
+
+  // La grilla de horarios se recalcula sola apenas hay profesional + fecha;
+  // "excluirTurnoId" evita que el horario actual del turno en edición
+  // desaparezca de la lista por estar "ocupado" por sí mismo.
+  const { horarios, cargando: cargandoHorarios } = useHorariosDisponibles(
+    form.values.profesionalId,
+    form.values.fecha,
+    turnoEnEdicion?.id,
+  );
 
   const cargarTurnos = async () => {
     setCargando(true);
@@ -107,6 +122,34 @@ export function PaginaTurnos() {
     profesionalesServicio.obtenerTodos().then(setProfesionales).catch(() => undefined);
   }, [esAdministrador]);
 
+  useEffect(() => {
+    if (!esProfesional || !sesion?.profesionalId) return;
+    profesionalesServicio
+      .obtenerTodos()
+      .then((lista) => {
+        const propio = lista.find((p) => p.id === sesion.profesionalId);
+        if (propio) {
+          setDuracionActual(propio.duracionTurnoMinutos);
+          setDuracionInput(propio.duracionTurnoMinutos);
+        }
+      })
+      .catch(() => undefined);
+  }, [esProfesional, sesion?.profesionalId]);
+
+  const manejarGuardarDuracion = async () => {
+    if (!sesion?.profesionalId || duracionInput === '') return;
+    setGuardandoDuracion(true);
+    try {
+      const actualizado = await profesionalesServicio.actualizarDuracionTurno(sesion.profesionalId, duracionInput);
+      setDuracionActual(actualizado.duracionTurnoMinutos);
+      notifications.show({ color: 'green', message: 'Duración de turno actualizada correctamente.' });
+    } catch (err) {
+      notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+    } finally {
+      setGuardandoDuracion(false);
+    }
+  };
+
   const abrirModalCrear = () => {
     setTurnoEnEdicion(null);
     form.setValues(VALORES_INICIALES);
@@ -120,7 +163,7 @@ export function PaginaTurnos() {
       pacienteId: String(turno.pacienteId),
       profesionalId: String(turno.profesionalId),
       fecha: turno.fecha,
-      horario: formatearHorario(turno.horario),
+      horario: turno.horario,
       estado: turno.estado,
     });
     form.clearErrors();
@@ -138,12 +181,11 @@ export function PaginaTurnos() {
 
     setGuardando(true);
     try {
-      const horario = valores.horario.length === 5 ? `${valores.horario}:00` : valores.horario;
       const datosComunes = {
         pacienteId: Number(valores.pacienteId),
         profesionalId: Number(valores.profesionalId),
         fecha: valores.fecha,
-        horario,
+        horario: valores.horario,
       };
 
       if (turnoEnEdicion) {
@@ -212,6 +254,7 @@ export function PaginaTurnos() {
     label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
   }));
   const opcionesEstado = ESTADOS_TURNO.map((estado) => ({ value: estado, label: estado }));
+  const opcionesHorario = horarios.map((h) => ({ value: h, label: formatearHorario(h) }));
 
   return (
     <>
@@ -223,6 +266,24 @@ export function PaginaTurnos() {
           </Button>
         )}
       </Group>
+
+      {esProfesional && (
+        <Group mb="lg" align="flex-end">
+          <NumberInput
+            label="Duración de turno (minutos)"
+            description={duracionActual !== null ? `Actual: ${duracionActual} min` : undefined}
+            min={5}
+            max={180}
+            step={5}
+            w={220}
+            value={duracionInput}
+            onChange={(valor) => setDuracionInput(typeof valor === 'number' ? valor : '')}
+          />
+          <Button variant="default" loading={guardandoDuracion} onClick={manejarGuardarDuracion}>
+            Guardar duración
+          </Button>
+        </Group>
+      )}
 
       <Group mb="md" align="flex-end">
         <DateInput
@@ -363,6 +424,10 @@ export function PaginaTurnos() {
               searchable
               data={opcionesProfesionales}
               {...form.getInputProps('profesionalId')}
+              onChange={(valor) => {
+                form.setFieldValue('profesionalId', valor ?? '');
+                form.setFieldValue('horario', null); // la grilla cambia, no queda un horario viejo seleccionado
+              }}
             />
             <DateInput
               label="Fecha"
@@ -370,8 +435,27 @@ export function PaginaTurnos() {
               required
               minDate={turnoEnEdicion ? undefined : new Date()}
               {...form.getInputProps('fecha')}
+              onChange={(valor) => {
+                form.setFieldValue('fecha', valor);
+                form.setFieldValue('horario', null);
+              }}
             />
-            <TimeInput label="Horario" required {...form.getInputProps('horario')} />
+            <Select
+              label="Horario"
+              placeholder={
+                !form.values.profesionalId || !form.values.fecha
+                  ? 'Elegí profesional y fecha primero'
+                  : cargandoHorarios
+                    ? 'Buscando horarios...'
+                    : opcionesHorario.length === 0
+                      ? 'No hay horarios libres ese día'
+                      : 'Seleccionar horario'
+              }
+              required
+              disabled={!form.values.profesionalId || !form.values.fecha || opcionesHorario.length === 0}
+              data={opcionesHorario}
+              {...form.getInputProps('horario')}
+            />
             {turnoEnEdicion && (
               <Select
                 label="Estado"
