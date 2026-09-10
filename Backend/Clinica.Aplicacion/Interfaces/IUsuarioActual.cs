@@ -10,4 +10,5 @@ public interface IUsuarioActual
     int UsuarioId { get; }
     RolUsuario Rol { get; }
     int? ProfesionalId { get; }
+    int? PacienteId { get; }
 }

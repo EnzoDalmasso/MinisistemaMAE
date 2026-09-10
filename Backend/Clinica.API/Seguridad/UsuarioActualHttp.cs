@@ -25,6 +25,9 @@ public class UsuarioActualHttp : IUsuarioActual
     public int? ProfesionalId =>
         int.TryParse(ObtenerClaim("profesionalId"), out var id) ? id : null;
 
+    public int? PacienteId =>
+        int.TryParse(ObtenerClaim("pacienteId"), out var id) ? id : null;
+
     private string? ObtenerClaim(string tipo) =>
         _httpContextAccessor.HttpContext?.User.FindFirstValue(tipo);
 }

@@ -25,4 +25,16 @@ public class AutenticacionController : ControllerBase
         var respuesta = await _servicio.IniciarSesionAsync(dto, cancellationToken);
         return Ok(respuesta);
     }
+
+    // Login sin contraseña del paciente: crea la cuenta la primera vez que
+    // ese DNI accede, o ingresa a la existente (ver ServicioAutenticacion).
+    [HttpPost("acceso-paciente")]
+    [AllowAnonymous]
+    public async Task<ActionResult<RespuestaAutenticacionDto>> AccederComoPaciente(
+        [FromBody] AccesoPacienteDto dto,
+        CancellationToken cancellationToken)
+    {
+        var respuesta = await _servicio.AccederComoPacienteAsync(dto, cancellationToken);
+        return Ok(respuesta);
+    }
 }
