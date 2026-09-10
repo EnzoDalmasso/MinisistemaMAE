@@ -52,11 +52,12 @@ export function PaginaDashboard() {
   }
 
   const esProfesional = sesion?.rol === 'Profesional';
+  const esPaciente = sesion?.rol === 'Paciente';
 
   return (
     <>
       <Title order={2} mb="lg">
-        {esProfesional ? 'Mi panel' : 'Panel general'}
+        {esProfesional || esPaciente ? 'Mi panel' : 'Panel general'}
       </Title>
 
       <Grid mb="xl">
@@ -74,7 +75,7 @@ export function PaginaDashboard() {
         </Grid.Col>
       </Grid>
 
-      {esProfesional && (
+      {(esProfesional || esPaciente) && (
         <Paper withBorder radius="md" p="md">
           <Title order={4} mb="md">
             Mis próximos turnos
@@ -87,7 +88,7 @@ export function PaginaDashboard() {
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Paciente</Table.Th>
+                  <Table.Th>{esPaciente ? 'Profesional' : 'Paciente'}</Table.Th>
                   <Table.Th>Fecha</Table.Th>
                   <Table.Th>Horario</Table.Th>
                   <Table.Th>Estado</Table.Th>
@@ -96,7 +97,7 @@ export function PaginaDashboard() {
               <Table.Tbody>
                 {resumen.proximosTurnos.map((turno) => (
                   <Table.Tr key={turno.id}>
-                    <Table.Td>{turno.pacienteNombreCompleto}</Table.Td>
+                    <Table.Td>{esPaciente ? turno.profesionalNombreCompleto : turno.pacienteNombreCompleto}</Table.Td>
                     <Table.Td>{formatearFecha(turno.fecha)}</Table.Td>
                     <Table.Td>{formatearHorario(turno.horario)}</Table.Td>
                     <Table.Td>

@@ -1,7 +1,7 @@
-import { Button, Card, Container, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Button, Card, Container, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAutenticacion } from '../hooks/useAutenticacion';
 import { obtenerMensajeError } from '../utilidades/manejadorErrores';
 
@@ -64,6 +64,10 @@ export function PaginaLogin() {
           </Stack>
         </form>
       </Card>
+
+      <Text ta="center" size="sm" mt="md">
+        ¿Venís a sacar un turno? <Anchor component={Link} to="/acceso-paciente">Entrá acá</Anchor>
+      </Text>
     </Container>
   );
 }

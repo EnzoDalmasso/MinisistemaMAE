@@ -7,6 +7,8 @@ export interface SesionAlmacenada {
   nombreUsuario: string;
   rol: Rol;
   profesionalId: number | null;
+  pacienteId: number | null;
+  nombreCompleto: string | null;
   expiraEn: string;
 }
 

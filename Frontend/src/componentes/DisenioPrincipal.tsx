@@ -11,17 +11,23 @@ export function DisenioPrincipal() {
   const ubicacion = useLocation();
 
   const esAdministrador = sesion?.rol === 'Administrador';
+  const esPaciente = sesion?.rol === 'Paciente';
+
+  // Para un paciente, "nombreUsuario" es su DNI: se muestra su nombre real
+  // en su lugar cuando está disponible.
+  const nombreAMostrar = sesion?.nombreCompleto ?? sesion?.nombreUsuario ?? '';
 
   const manejarCerrarSesion = () => {
     cerrarSesion();
-    navegar('/login', { replace: true });
+    navegar(esPaciente ? '/acceso-paciente' : '/login', { replace: true });
   };
 
   const enlaces = [
     { etiqueta: 'Panel', ruta: '/', icono: IconLayoutDashboard, visible: true },
     { etiqueta: 'Pacientes', ruta: '/pacientes', icono: IconUsers, visible: esAdministrador },
     { etiqueta: 'Profesionales', ruta: '/profesionales', icono: IconStethoscope, visible: esAdministrador },
-    { etiqueta: 'Turnos', ruta: '/turnos', icono: IconCalendarEvent, visible: true },
+    { etiqueta: 'Turnos', ruta: '/turnos', icono: IconCalendarEvent, visible: !esPaciente },
+    { etiqueta: 'Mis turnos', ruta: '/mis-turnos', icono: IconCalendarEvent, visible: esPaciente },
   ].filter((enlace) => enlace.visible);
 
   return (
@@ -39,11 +45,11 @@ export function DisenioPrincipal() {
 
           <Group gap="sm">
             <Avatar radius="xl" color="blue">
-              {sesion?.nombreUsuario.charAt(0).toUpperCase()}
+              {nombreAMostrar.charAt(0).toUpperCase()}
             </Avatar>
             <Box visibleFrom="xs">
               <Text size="sm" fw={500} lh={1.2}>
-                {sesion?.nombreUsuario}
+                {nombreAMostrar}
               </Text>
               <Text size="xs" c="dimmed" lh={1.2}>
                 {sesion?.rol}

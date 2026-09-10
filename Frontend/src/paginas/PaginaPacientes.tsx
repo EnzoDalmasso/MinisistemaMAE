@@ -64,8 +64,10 @@ export function PaginaPacientes() {
     form.setValues({
       nombre: paciente.nombre,
       apellido: paciente.apellido,
-      telefono: paciente.telefono,
-      obraSocial: paciente.obraSocial,
+      // Un paciente autogestionado puede no tenerlos cargados todavía; el
+      // administrador los completa acá si hace falta.
+      telefono: paciente.telefono ?? '',
+      obraSocial: paciente.obraSocial ?? '',
     });
     form.clearErrors();
     setModalAbierto(true);
@@ -120,6 +122,7 @@ export function PaginaPacientes() {
             <Table.Tr>
               <Table.Th>Nombre</Table.Th>
               <Table.Th>Apellido</Table.Th>
+              <Table.Th>DNI</Table.Th>
               <Table.Th>Teléfono</Table.Th>
               <Table.Th>Obra social</Table.Th>
               <Table.Th w={80} />
@@ -128,7 +131,7 @@ export function PaginaPacientes() {
           <Table.Tbody>
             {pacientes.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Text c="dimmed" ta="center" py="md">
                     Todavía no hay pacientes cargados.
                   </Text>
@@ -139,8 +142,9 @@ export function PaginaPacientes() {
                 <Table.Tr key={paciente.id}>
                   <Table.Td>{paciente.nombre}</Table.Td>
                   <Table.Td>{paciente.apellido}</Table.Td>
-                  <Table.Td>{paciente.telefono}</Table.Td>
-                  <Table.Td>{paciente.obraSocial}</Table.Td>
+                  <Table.Td>{paciente.dni ?? '—'}</Table.Td>
+                  <Table.Td>{paciente.telefono ?? '—'}</Table.Td>
+                  <Table.Td>{paciente.obraSocial ?? '—'}</Table.Td>
                   <Table.Td>
                     <ActionIcon variant="subtle" onClick={() => abrirModalEditar(paciente)} aria-label="Editar paciente">
                       <IconEdit size={16} />

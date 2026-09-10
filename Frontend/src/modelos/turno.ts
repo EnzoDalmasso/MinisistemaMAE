@@ -26,6 +26,17 @@ export interface ActualizarTurnoDto extends CrearTurnoDto {
   estado: EstadoTurno;
 }
 
+// Usado por el paciente para reprogramar su propio turno: solo fecha/horario.
+export interface ReprogramarTurnoDto {
+  fecha: string;
+  horario: string;
+}
+
+// Usado por el profesional (o el administrador) para cambiar solo el estado.
+export interface CambiarEstadoTurnoDto {
+  estado: EstadoTurno;
+}
+
 export interface TurnoFiltro {
   profesionalId?: number;
   fecha?: string;

@@ -1,4 +1,11 @@
-import type { ActualizarTurnoDto, CrearTurnoDto, Turno, TurnoFiltro } from '../modelos/turno';
+import type {
+  ActualizarTurnoDto,
+  CambiarEstadoTurnoDto,
+  CrearTurnoDto,
+  ReprogramarTurnoDto,
+  Turno,
+  TurnoFiltro,
+} from '../modelos/turno';
 import clienteApi from './clienteApi';
 
 export const turnosServicio = {
@@ -29,6 +36,16 @@ export const turnosServicio = {
 
   cancelar: async (id: number): Promise<Turno> => {
     const { data } = await clienteApi.patch<Turno>(`/turnos/${id}/cancelar`);
+    return data;
+  },
+
+  reprogramar: async (id: number, dto: ReprogramarTurnoDto): Promise<Turno> => {
+    const { data } = await clienteApi.put<Turno>(`/turnos/${id}/reprogramar`, dto);
+    return data;
+  },
+
+  cambiarEstado: async (id: number, dto: CambiarEstadoTurnoDto): Promise<Turno> => {
+    const { data } = await clienteApi.patch<Turno>(`/turnos/${id}/estado`, dto);
     return data;
   },
 };
