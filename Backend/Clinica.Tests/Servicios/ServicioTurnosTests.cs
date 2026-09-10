@@ -36,13 +36,16 @@ public class ServicioTurnosTests : IDisposable
 
     private ClinicaDbContext CrearContexto() => new(_opciones);
 
-    private static ServicioTurnos CrearServicio(ClinicaDbContext contexto, RolUsuario rol = RolUsuario.Administrador, int? profesionalId = null) => new(
+    private static ServicioTurnos CrearServicio(
+        ClinicaDbContext contexto, RolUsuario rol = RolUsuario.Administrador, int? profesionalId = null, int? pacienteId = null) => new(
         new RepositorioTurnos(contexto),
         new RepositorioPacientes(contexto),
         new RepositorioProfesionales(contexto),
-        new UsuarioActualFalso(rol, profesionalId),
+        new UsuarioActualFalso(rol, profesionalId, pacienteId),
         new CrearTurnoDtoValidador(),
-        new ActualizarTurnoDtoValidador());
+        new ActualizarTurnoDtoValidador(),
+        new ReprogramarTurnoDtoValidador(),
+        new CambiarEstadoTurnoDtoValidador());
 
     private static async Task<Paciente> AgregarPacienteAsync(ClinicaDbContext contexto, string nombre = "Julián", string apellido = "Ramírez")
     {
@@ -274,5 +277,102 @@ public class ServicioTurnosTests : IDisposable
         };
 
         await Assert.ThrowsAsync<ExcepcionNoEncontrado>(() => servicio.CrearAsync(dto, CancellationToken.None));
+    }
+
+    // 7. Un paciente autogestionado solo puede pedir turno para sí mismo,
+    // aunque mande otro PacienteId en el body.
+    [Fact]
+    public async Task CrearAsync_ComoPaciente_FuerzaElPacienteIdPropio()
+    {
+        using var contexto = CrearContexto();
+        var (pacientePropio, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var otroPaciente = await AgregarPacienteAsync(contexto, "Sofía", "Fernández");
+
+        var servicioPaciente = CrearServicio(contexto, RolUsuario.Paciente, pacienteId: pacientePropio.Id);
+
+        var resultado = await servicioPaciente.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = otroPaciente.Id, // intenta pedir el turno a nombre de otro paciente
+            ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1),
+            Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+
+        Assert.Equal(pacientePropio.Id, resultado.PacienteId);
+    }
+
+    // 8. Reprogramar a un horario ocupado también respeta la regla de disponibilidad.
+    [Fact]
+    public async Task ReprogramarAsync_AUnHorarioYaOcupado_LanzaExcepcionConflicto()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+
+        var servicioAdmin = CrearServicio(contexto);
+        await servicioAdmin.CrearAsync(new CrearTurnoDto { PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(9, 0) }, CancellationToken.None);
+        var turnoAReprogramar = await servicioAdmin.CrearAsync(new CrearTurnoDto { PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(10, 0) }, CancellationToken.None);
+
+        var servicioPaciente = CrearServicio(contexto, RolUsuario.Paciente, pacienteId: paciente.Id);
+
+        await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicioPaciente.ReprogramarAsync(
+            turnoAReprogramar.Id,
+            new ReprogramarTurnoDto { Fecha = fecha, Horario = new TimeOnly(9, 0) },
+            CancellationToken.None));
+    }
+
+    // 9. Un paciente no puede ver, cancelar ni reprogramar el turno de otro paciente.
+    [Fact]
+    public async Task TurnoDeOtroPaciente_NoEsAccesiblePorUnPacienteDistinto()
+    {
+        using var contexto = CrearContexto();
+        var (pacienteDueño, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var otroPaciente = await AgregarPacienteAsync(contexto, "Sofía", "Fernández");
+
+        var servicioAdmin = CrearServicio(contexto);
+        var turno = await servicioAdmin.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = pacienteDueño.Id,
+            ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1),
+            Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+
+        var servicioOtroPaciente = CrearServicio(contexto, RolUsuario.Paciente, pacienteId: otroPaciente.Id);
+
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioOtroPaciente.ObtenerPorIdAsync(turno.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioOtroPaciente.CancelarAsync(turno.Id, CancellationToken.None));
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioOtroPaciente.ReprogramarAsync(
+            turno.Id, new ReprogramarTurnoDto { Fecha = turno.Fecha, Horario = turno.Horario }, CancellationToken.None));
+    }
+
+    // 10. El profesional puede cambiar el estado de sus propios turnos, pero no el de otros.
+    [Fact]
+    public async Task CambiarEstadoAsync_ComoProfesional_SoloPermiteTurnosPropios()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesionalPropio) = await SembrarPacienteYProfesionalAsync(contexto);
+        var profesionalAjeno = await AgregarProfesionalAsync(contexto, "Martín", "Pereyra", "Pediatría");
+
+        var servicioAdmin = CrearServicio(contexto);
+        var turnoPropio = await servicioAdmin.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = paciente.Id, ProfesionalId = profesionalPropio.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1), Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+        var turnoAjeno = await servicioAdmin.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = paciente.Id, ProfesionalId = profesionalAjeno.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1), Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+
+        var servicioProfesional = CrearServicio(contexto, RolUsuario.Profesional, profesionalPropio.Id);
+
+        var actualizado = await servicioProfesional.CambiarEstadoAsync(
+            turnoPropio.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None);
+        Assert.Equal(EstadoTurno.Confirmado, actualizado.Estado);
+
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioProfesional.CambiarEstadoAsync(
+            turnoAjeno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None));
     }
 }
