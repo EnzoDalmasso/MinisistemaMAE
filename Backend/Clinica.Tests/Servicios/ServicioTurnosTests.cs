@@ -369,11 +369,33 @@ public class ServicioTurnosTests : IDisposable
         var servicioProfesional = CrearServicio(contexto, RolUsuario.Profesional, profesionalPropio.Id);
 
         var actualizado = await servicioProfesional.CambiarEstadoAsync(
-            turnoPropio.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None);
-        Assert.Equal(EstadoTurno.Confirmado, actualizado.Estado);
+            turnoPropio.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Atendido }, CancellationToken.None);
+        Assert.Equal(EstadoTurno.Atendido, actualizado.Estado);
 
         await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioProfesional.CambiarEstadoAsync(
-            turnoAjeno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None));
+            turnoAjeno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Atendido }, CancellationToken.None));
+    }
+
+    // El profesional solo puede marcar Atendido o Cancelado (registra qué pasó
+    // con la cita); Pendiente/Confirmado son estados administrativos previos
+    // a la cita, exclusivos del Administrador.
+    [Fact]
+    public async Task CambiarEstadoAsync_ComoProfesionalConEstadoNoPermitido_LanzaProhibido()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+
+        var servicioAdmin = CrearServicio(contexto);
+        var turno = await servicioAdmin.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = paciente.Id, ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1), Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+
+        var servicioProfesional = CrearServicio(contexto, RolUsuario.Profesional, profesional.Id);
+
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioProfesional.CambiarEstadoAsync(
+            turno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Confirmado }, CancellationToken.None));
     }
 
     // 12. La grilla de horarios disponibles respeta la duración del

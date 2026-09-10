@@ -182,9 +182,20 @@ public class ServicioTurnos : IServicioTurnos
         var turno = await _repositorioTurnos.ObtenerPorIdAsync(id, cancellationToken)
             ?? throw new ExcepcionNoEncontrado("No se encontró el turno solicitado.");
 
-        if (_usuarioActual.Rol == RolUsuario.Profesional && turno.ProfesionalId != _usuarioActual.ProfesionalId)
+        if (_usuarioActual.Rol == RolUsuario.Profesional)
         {
-            throw new ExcepcionProhibido("No tiene permiso para modificar este turno.");
+            if (turno.ProfesionalId != _usuarioActual.ProfesionalId)
+            {
+                throw new ExcepcionProhibido("No tiene permiso para modificar este turno.");
+            }
+
+            // El profesional solo registra qué pasó con la cita (se atendió o
+            // no); los estados previos (Pendiente/Confirmado) son
+            // administrativos y quedan reservados al Administrador.
+            if (dto.Estado is not (EstadoTurno.Atendido or EstadoTurno.Cancelado))
+            {
+                throw new ExcepcionProhibido("Solo puede marcar el turno como Atendido o Cancelado.");
+            }
         }
 
         if (dto.Estado != EstadoTurno.Cancelado)

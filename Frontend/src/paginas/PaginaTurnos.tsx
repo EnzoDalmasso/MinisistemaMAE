@@ -254,6 +254,21 @@ export function PaginaTurnos() {
     label: `${p.nombre} ${p.apellido} — ${p.especialidad}`,
   }));
   const opcionesEstado = ESTADOS_TURNO.map((estado) => ({ value: estado, label: estado }));
+  // El profesional solo registra si el paciente fue atendido o no se
+  // presentó; los estados previos (Pendiente/Confirmado) los administra el
+  // Administrador (el backend rechaza cualquier otro valor para este rol).
+  const opcionesEstadoProfesional = (['Atendido', 'Cancelado'] as EstadoTurno[]).map((estado) => ({
+    value: estado,
+    label: estado,
+  }));
+  // Si el turno todavía está en un estado administrativo (Pendiente/
+  // Confirmado), se agrega como primera opción de solo lectura para que el
+  // select lo siga mostrando bien — el profesional puede avanzarlo a
+  // Atendido/Cancelado, pero no volver a elegir un estado administrativo.
+  const opcionesEstadoParaProfesional = (turno: Turno) =>
+    opcionesEstadoProfesional.some((opcion) => opcion.value === turno.estado)
+      ? opcionesEstadoProfesional
+      : [{ value: turno.estado, label: turno.estado }, ...opcionesEstadoProfesional];
   const opcionesHorario = horarios.map((h) => ({ value: h, label: formatearHorario(h) }));
 
   return (
@@ -388,10 +403,10 @@ export function PaginaTurnos() {
                         size="xs"
                         w={150}
                         aria-label="Cambiar estado del turno"
-                        data={opcionesEstado}
+                        data={opcionesEstadoParaProfesional(turno)}
                         value={turno.estado}
                         allowDeselect={false}
-                        onChange={(valor) => valor && manejarCambiarEstado(turno, valor as EstadoTurno)}
+                        onChange={(valor) => valor && valor !== turno.estado && manejarCambiarEstado(turno, valor as EstadoTurno)}
                       />
                     </Table.Td>
                   )}
