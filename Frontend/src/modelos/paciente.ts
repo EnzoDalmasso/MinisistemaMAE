@@ -3,9 +3,11 @@ export interface Paciente {
   nombre: string;
   apellido: string;
   // Nullable: un paciente autogestionado (alta por DNI) no completa estos
-  // datos; el que carga el Administrador manualmente sí los tiene.
+  // datos hasta pedir su primer turno; el que carga el Administrador
+  // manualmente sí los tiene (salvo email, que es exclusivo del autoservicio).
   telefono: string | null;
   obraSocial: string | null;
+  email: string | null;
   // Solo tiene valor para pacientes autogestionados.
   dni: string | null;
 }
@@ -16,4 +18,12 @@ export interface GuardarPacienteDto {
   apellido: string;
   telefono: string;
   obraSocial: string;
+}
+
+// DTO acotado para el autoservicio del paciente (no permite tocar
+// nombre/apellido/DNI, a diferencia de GuardarPacienteDto).
+export interface ActualizarContactoPacienteDto {
+  telefono: string;
+  obraSocial: string;
+  email: string;
 }

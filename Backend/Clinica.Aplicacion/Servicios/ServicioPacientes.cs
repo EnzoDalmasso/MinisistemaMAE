@@ -11,17 +11,23 @@ namespace Clinica.Aplicacion.Servicios;
 public class ServicioPacientes : IServicioPacientes
 {
     private readonly IRepositorioPacientes _repositorio;
+    private readonly IUsuarioActual _usuarioActual;
     private readonly IValidator<CrearPacienteDto> _validadorCrear;
     private readonly IValidator<ActualizarPacienteDto> _validadorActualizar;
+    private readonly IValidator<ActualizarContactoPacienteDto> _validadorContacto;
 
     public ServicioPacientes(
         IRepositorioPacientes repositorio,
+        IUsuarioActual usuarioActual,
         IValidator<CrearPacienteDto> validadorCrear,
-        IValidator<ActualizarPacienteDto> validadorActualizar)
+        IValidator<ActualizarPacienteDto> validadorActualizar,
+        IValidator<ActualizarContactoPacienteDto> validadorContacto)
     {
         _repositorio = repositorio;
+        _usuarioActual = usuarioActual;
         _validadorCrear = validadorCrear;
         _validadorActualizar = validadorActualizar;
+        _validadorContacto = validadorContacto;
     }
 
     public async Task<List<PacienteDto>> ObtenerTodosAsync(CancellationToken cancellationToken = default)
@@ -63,6 +69,33 @@ public class ServicioPacientes : IServicioPacientes
         return ADto(paciente);
     }
 
+    public async Task<PacienteDto> ObtenerPropioAsync(CancellationToken cancellationToken = default)
+    {
+        var paciente = await _repositorio.ObtenerPorIdAsync(ObtenerPacienteIdPropio(), cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el paciente asociado a la cuenta.");
+        return ADto(paciente);
+    }
+
+    public async Task<PacienteDto> ActualizarContactoPropioAsync(ActualizarContactoPacienteDto dto, CancellationToken cancellationToken = default)
+    {
+        await _validadorContacto.ValidarYLanzarAsync(dto, cancellationToken);
+
+        var paciente = await _repositorio.ObtenerPorIdAsync(ObtenerPacienteIdPropio(), cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el paciente asociado a la cuenta.");
+
+        paciente.Telefono = dto.Telefono.Trim();
+        paciente.ObraSocial = dto.ObraSocial.Trim();
+        paciente.Email = dto.Email.Trim();
+
+        await _repositorio.ActualizarAsync(paciente, cancellationToken);
+        return ADto(paciente);
+    }
+
+    // Nunca confía en un id que venga del cliente: el autoservicio siempre
+    // opera sobre el paciente vinculado a la cuenta autenticada.
+    private int ObtenerPacienteIdPropio() =>
+        _usuarioActual.PacienteId ?? throw new ExcepcionProhibido("La cuenta no tiene un paciente asociado.");
+
     private static PacienteDto ADto(Paciente p) => new()
     {
         Id = p.Id,
@@ -70,6 +103,7 @@ public class ServicioPacientes : IServicioPacientes
         Apellido = p.Apellido,
         Telefono = p.Telefono,
         ObraSocial = p.ObraSocial,
+        Email = p.Email,
         Dni = p.Dni
     };
 }

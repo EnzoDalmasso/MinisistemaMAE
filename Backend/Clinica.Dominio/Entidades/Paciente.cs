@@ -16,6 +16,7 @@ public class Paciente
     // sigue exigiendo a través de su propio validador.
     public string? Telefono { get; set; }
     public string? ObraSocial { get; set; }
+    public string? Email { get; set; }
 
     public DateTime FechaCreacion { get; set; }
 

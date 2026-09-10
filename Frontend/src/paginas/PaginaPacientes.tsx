@@ -125,13 +125,14 @@ export function PaginaPacientes() {
               <Table.Th>DNI</Table.Th>
               <Table.Th>Teléfono</Table.Th>
               <Table.Th>Obra social</Table.Th>
+              <Table.Th>Email</Table.Th>
               <Table.Th w={80} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {pacientes.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text c="dimmed" ta="center" py="md">
                     Todavía no hay pacientes cargados.
                   </Text>
@@ -145,6 +146,7 @@ export function PaginaPacientes() {
                   <Table.Td>{paciente.dni ?? '—'}</Table.Td>
                   <Table.Td>{paciente.telefono ?? '—'}</Table.Td>
                   <Table.Td>{paciente.obraSocial ?? '—'}</Table.Td>
+                  <Table.Td>{paciente.email ?? '—'}</Table.Td>
                   <Table.Td>
                     <ActionIcon variant="subtle" onClick={() => abrirModalEditar(paciente)} aria-label="Editar paciente">
                       <IconEdit size={16} />

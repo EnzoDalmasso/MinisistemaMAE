@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Button, Center, Group, Loader, Modal, Select, Stack, Table, Text, Title } from '@mantine/core';
+import { ActionIcon, Alert, Button, Center, Group, Loader, Modal, Select, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { modals } from '@mantine/modals';
@@ -8,8 +8,10 @@ import { useEffect, useState } from 'react';
 import { EstadoTurnoBadge } from '../componentes/EstadoTurnoBadge';
 import { useAutenticacion } from '../hooks/useAutenticacion';
 import { useHorariosDisponibles } from '../hooks/useHorariosDisponibles';
+import type { Paciente } from '../modelos/paciente';
 import type { Profesional } from '../modelos/profesional';
 import type { Turno } from '../modelos/turno';
+import { pacientesServicio } from '../servicios/pacientesServicio';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
 import { turnosServicio } from '../servicios/turnosServicio';
 import { formatearFecha, formatearHorario } from '../utilidades/formato';
@@ -19,9 +21,21 @@ interface ValoresNuevoTurno {
   profesionalId: string;
   fecha: string | null;
   horario: string | null;
+  // Solo se piden (y se validan) cuando el paciente todavía no los tiene
+  // cargados — ver "datosDeContactoCompletos".
+  telefono: string;
+  obraSocial: string;
+  email: string;
 }
 
-const VALORES_INICIALES: ValoresNuevoTurno = { profesionalId: '', fecha: null, horario: null };
+const VALORES_INICIALES: ValoresNuevoTurno = {
+  profesionalId: '',
+  fecha: null,
+  horario: null,
+  telefono: '',
+  obraSocial: '',
+  email: '',
+};
 
 interface ValoresReprogramar {
   fecha: string | null;
@@ -40,6 +54,7 @@ export function PaginaMisTurnos() {
   const [error, setError] = useState<string | null>(null);
 
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
+  const [miPerfil, setMiPerfil] = useState<Paciente | null>(null);
 
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
@@ -93,10 +108,20 @@ export function PaginaMisTurnos() {
   useEffect(() => {
     void cargarTurnos();
     profesionalesServicio.obtenerTodos().then(setProfesionales).catch(() => undefined);
+    pacientesServicio.obtenerMiPerfil().then(setMiPerfil).catch(() => undefined);
   }, []);
 
+  // Un paciente autogestionado arranca sin estos datos: se le piden recién
+  // al pedir su primer turno, y una vez completos no se le vuelven a pedir.
+  const datosDeContactoCompletos = Boolean(miPerfil?.telefono && miPerfil?.obraSocial && miPerfil?.email);
+
   const abrirModalNuevo = () => {
-    formNuevo.setValues(VALORES_INICIALES);
+    formNuevo.setValues({
+      ...VALORES_INICIALES,
+      telefono: miPerfil?.telefono ?? '',
+      obraSocial: miPerfil?.obraSocial ?? '',
+      email: miPerfil?.email ?? '',
+    });
     formNuevo.clearErrors();
     setModalNuevoAbierto(true);
   };
@@ -107,8 +132,36 @@ export function PaginaMisTurnos() {
       return;
     }
 
+    // Los datos de contacto solo son obligatorios la primera vez (si ya
+    // están completos en el perfil, ni se muestran estos campos).
+    if (!datosDeContactoCompletos) {
+      let hayErroresDeContacto = false;
+      if (!valores.telefono.trim()) {
+        formNuevo.setFieldError('telefono', 'El teléfono es obligatorio.');
+        hayErroresDeContacto = true;
+      }
+      if (!valores.obraSocial.trim()) {
+        formNuevo.setFieldError('obraSocial', 'La obra social es obligatoria.');
+        hayErroresDeContacto = true;
+      }
+      if (!valores.email.trim()) {
+        formNuevo.setFieldError('email', 'El email es obligatorio.');
+        hayErroresDeContacto = true;
+      }
+      if (hayErroresDeContacto) return;
+    }
+
     setGuardandoNuevo(true);
     try {
+      if (!datosDeContactoCompletos) {
+        const perfilActualizado = await pacientesServicio.actualizarMiContacto({
+          telefono: valores.telefono.trim(),
+          obraSocial: valores.obraSocial.trim(),
+          email: valores.email.trim(),
+        });
+        setMiPerfil(perfilActualizado);
+      }
+
       await turnosServicio.crear({
         pacienteId: sesion?.pacienteId ?? 0,
         profesionalId: Number(valores.profesionalId),
@@ -305,6 +358,21 @@ export function PaginaMisTurnos() {
               data={aOpcionesHorario(horariosNuevo)}
               {...formNuevo.getInputProps('horario')}
             />
+            {!datosDeContactoCompletos && (
+              <>
+                <Text size="sm" c="dimmed" mt="xs">
+                  Para tu primer turno necesitamos algunos datos de contacto.
+                </Text>
+                <TextInput
+                  label="Teléfono"
+                  required
+                  placeholder="11-5555-0000"
+                  {...formNuevo.getInputProps('telefono')}
+                />
+                <TextInput label="Obra social" required {...formNuevo.getInputProps('obraSocial')} />
+                <TextInput label="Email" type="email" required {...formNuevo.getInputProps('email')} />
+              </>
+            )}
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalNuevoAbierto(false)}>
                 Cancelar

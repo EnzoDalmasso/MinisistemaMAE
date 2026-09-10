@@ -19,6 +19,7 @@ public class PacienteConfiguracion : IEntityTypeConfiguration<Paciente>
         // sigue exigiendo a través de su propio validador.
         builder.Property(p => p.Telefono).HasMaxLength(30);
         builder.Property(p => p.ObraSocial).HasMaxLength(100);
+        builder.Property(p => p.Email).HasMaxLength(150);
 
         builder.Property(p => p.Dni).HasMaxLength(15);
         // Único cuando está presente: Postgres permite múltiples NULL en un
