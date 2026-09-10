@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinica_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: clinica
+      POSTGRES_USER: clinica
+      POSTGRES_PASSWORD: clinica_dev_2026
+    ports:
+      # 5433 en el host (no 5432) para no chocar con una instalación local de
+      # PostgreSQL que ya pueda estar escuchando en el puerto por defecto.
+      - "5433:5432"
+    volumes:
+      - clinica_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  clinica_postgres_data:
