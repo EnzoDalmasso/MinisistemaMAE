@@ -14,6 +14,7 @@ public class ProfesionalConfiguracion : IEntityTypeConfiguration<Profesional>
         builder.Property(p => p.Nombre).IsRequired().HasMaxLength(100);
         builder.Property(p => p.Apellido).IsRequired().HasMaxLength(100);
         builder.Property(p => p.Especialidad).IsRequired().HasMaxLength(100);
+        builder.Property(p => p.DuracionTurnoMinutos).IsRequired().HasDefaultValue(30);
         builder.Property(p => p.FechaCreacion).IsRequired();
     }
 }

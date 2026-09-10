@@ -74,6 +74,20 @@ public class RepositorioTurnos : IRepositorioTurnos
         return await consulta.ToListAsync(cancellationToken);
     }
 
+    public async Task<List<TimeOnly>> ObtenerHorariosOcupadosAsync(int profesionalId, DateOnly fecha, int? idExcluir = null, CancellationToken cancellationToken = default)
+    {
+        var consulta = _contexto.Turnos
+            .AsNoTracking()
+            .Where(t => t.ProfesionalId == profesionalId && t.Fecha == fecha && t.Estado != EstadoTurno.Cancelado);
+
+        if (idExcluir.HasValue)
+        {
+            consulta = consulta.Where(t => t.Id != idExcluir.Value);
+        }
+
+        return await consulta.Select(t => t.Horario).ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExisteSolapamientoAsync(
         int profesionalId,
         DateOnly fecha,

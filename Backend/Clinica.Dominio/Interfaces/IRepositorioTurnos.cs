@@ -33,6 +33,12 @@ public interface IRepositorioTurnos
 
     Task<Dictionary<EstadoTurno, int>> ContarPorEstadoAsync(int? profesionalId, int? pacienteId = null, CancellationToken cancellationToken = default);
 
+    // Horarios ya ocupados (turnos activos, no cancelados) de un profesional
+    // en una fecha puntual. Usado para calcular la grilla de horarios libres.
+    // "idExcluir" permite no contar el propio turno al reprogramar/editar
+    // (si no, su propio horario actual aparecería como "ocupado" por sí mismo).
+    Task<List<TimeOnly>> ObtenerHorariosOcupadosAsync(int profesionalId, DateOnly fecha, int? idExcluir = null, CancellationToken cancellationToken = default);
+
     Task AgregarAsync(Turno turno, CancellationToken cancellationToken = default);
     Task ActualizarAsync(Turno turno, CancellationToken cancellationToken = default);
 }
