@@ -16,6 +16,15 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Override local opcional y nunca commiteado (ver .gitignore): para pisar
+// valores de appsettings.Development.json sin tocar un archivo trackeado
+// (ej. un puerto de Postgres distinto en tu máquina). Se ignora en
+// producción porque el archivo simplemente no existe ahí.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+}
+
 // ---------- Servicios de aplicación (casos de uso) ----------
 builder.Services.AddScoped<IServicioAutenticacion, ServicioAutenticacion>();
 builder.Services.AddScoped<IServicioPacientes, ServicioPacientes>();

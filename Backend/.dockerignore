@@ -3,3 +3,4 @@
 **/*.user
 .env
 appsettings.Development.json
+appsettings.Local.json
