@@ -38,6 +38,12 @@ public class GeneradorTokensJwt : IGeneradorTokens
             claims.Add(new Claim("profesionalId", usuario.ProfesionalId.Value.ToString()));
         }
 
+        if (usuario.PacienteId.HasValue)
+        {
+            // Análogo a profesionalId, para el rol Paciente.
+            claims.Add(new Claim("pacienteId", usuario.PacienteId.Value.ToString()));
+        }
+
         var claveSimetrica = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuracion.Clave));
         var credenciales = new SigningCredentials(claveSimetrica, SecurityAlgorithms.HmacSha256);
 

@@ -30,6 +30,7 @@ public class RepositorioTurnos : IRepositorioTurnos
         EstadoTurno? estado,
         DateOnly? fechaDesde = null,
         int? tomar = null,
+        int? pacienteId = null,
         CancellationToken cancellationToken = default)
     {
         var consulta = _contexto.Turnos
@@ -41,6 +42,11 @@ public class RepositorioTurnos : IRepositorioTurnos
         if (profesionalId.HasValue)
         {
             consulta = consulta.Where(t => t.ProfesionalId == profesionalId.Value);
+        }
+
+        if (pacienteId.HasValue)
+        {
+            consulta = consulta.Where(t => t.PacienteId == pacienteId.Value);
         }
 
         if (fecha.HasValue)
@@ -89,13 +95,18 @@ public class RepositorioTurnos : IRepositorioTurnos
         return await consulta.AnyAsync(cancellationToken);
     }
 
-    public async Task<Dictionary<EstadoTurno, int>> ContarPorEstadoAsync(int? profesionalId, CancellationToken cancellationToken = default)
+    public async Task<Dictionary<EstadoTurno, int>> ContarPorEstadoAsync(int? profesionalId, int? pacienteId = null, CancellationToken cancellationToken = default)
     {
         var consulta = _contexto.Turnos.AsNoTracking().AsQueryable();
 
         if (profesionalId.HasValue)
         {
             consulta = consulta.Where(t => t.ProfesionalId == profesionalId.Value);
+        }
+
+        if (pacienteId.HasValue)
+        {
+            consulta = consulta.Where(t => t.PacienteId == pacienteId.Value);
         }
 
         return await consulta

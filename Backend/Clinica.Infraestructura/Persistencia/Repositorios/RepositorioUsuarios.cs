@@ -17,5 +17,12 @@ public class RepositorioUsuarios : IRepositorioUsuarios
     public async Task<Usuario?> ObtenerPorNombreUsuarioAsync(string nombreUsuario, CancellationToken cancellationToken = default) =>
         await _contexto.Usuarios
             .Include(u => u.Profesional)
+            .Include(u => u.Paciente)
             .FirstOrDefaultAsync(u => u.NombreUsuario == nombreUsuario, cancellationToken);
+
+    public async Task AgregarAsync(Usuario usuario, CancellationToken cancellationToken = default)
+    {
+        _contexto.Usuarios.Add(usuario);
+        await _contexto.SaveChangesAsync(cancellationToken);
+    }
 }

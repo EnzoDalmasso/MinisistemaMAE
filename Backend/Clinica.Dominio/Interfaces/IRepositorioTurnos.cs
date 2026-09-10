@@ -9,14 +9,15 @@ public interface IRepositorioTurnos
     Task<Turno?> ObtenerPorIdAsync(int id, CancellationToken cancellationToken = default);
 
     // Búsqueda con filtros opcionales, usada tanto por el listado general (admin)
-    // como por el listado acotado a un profesional y por el resumen de "próximos turnos".
-    // "tomar" limita la cantidad de resultados (0 o null = sin límite).
+    // como por el listado acotado a un profesional/paciente y por el resumen
+    // de "próximos turnos". "tomar" limita la cantidad de resultados (0 o null = sin límite).
     Task<List<Turno>> BuscarAsync(
         int? profesionalId,
         DateOnly? fecha,
         EstadoTurno? estado,
         DateOnly? fechaDesde = null,
         int? tomar = null,
+        int? pacienteId = null,
         CancellationToken cancellationToken = default);
 
     // Verifica si ya existe otro turno activo (no cancelado) para ese profesional,
@@ -30,7 +31,7 @@ public interface IRepositorioTurnos
         int? idExcluir,
         CancellationToken cancellationToken = default);
 
-    Task<Dictionary<EstadoTurno, int>> ContarPorEstadoAsync(int? profesionalId, CancellationToken cancellationToken = default);
+    Task<Dictionary<EstadoTurno, int>> ContarPorEstadoAsync(int? profesionalId, int? pacienteId = null, CancellationToken cancellationToken = default);
 
     Task AgregarAsync(Turno turno, CancellationToken cancellationToken = default);
     Task ActualizarAsync(Turno turno, CancellationToken cancellationToken = default);

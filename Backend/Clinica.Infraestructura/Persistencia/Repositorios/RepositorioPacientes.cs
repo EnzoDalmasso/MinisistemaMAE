@@ -23,6 +23,9 @@ public class RepositorioPacientes : IRepositorioPacientes
     public async Task<Paciente?> ObtenerPorIdAsync(int id, CancellationToken cancellationToken = default) =>
         await _contexto.Pacientes.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
+    public async Task<Paciente?> ObtenerPorDniAsync(string dni, CancellationToken cancellationToken = default) =>
+        await _contexto.Pacientes.FirstOrDefaultAsync(p => p.Dni == dni, cancellationToken);
+
     public async Task AgregarAsync(Paciente paciente, CancellationToken cancellationToken = default)
     {
         _contexto.Pacientes.Add(paciente);
