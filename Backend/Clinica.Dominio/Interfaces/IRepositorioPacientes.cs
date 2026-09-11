@@ -16,4 +16,9 @@ public interface IRepositorioPacientes
     // y cada operación de este sistema afecta un único agregado por vez.
     Task AgregarAsync(Paciente paciente, CancellationToken cancellationToken = default);
     Task ActualizarAsync(Paciente paciente, CancellationToken cancellationToken = default);
+
+    // Borrado definitivo: solo se invoca tras verificar en el servicio que el
+    // paciente no tiene ningún turno asociado (la FK Turno -> Paciente es
+    // Restrict a propósito, para no perder ese historial).
+    Task EliminarAsync(Paciente paciente, CancellationToken cancellationToken = default);
 }

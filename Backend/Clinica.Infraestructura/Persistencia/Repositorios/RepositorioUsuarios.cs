@@ -29,6 +29,9 @@ public class RepositorioUsuarios : IRepositorioUsuarios
     public async Task<Usuario?> ObtenerPorProfesionalIdAsync(int profesionalId, CancellationToken cancellationToken = default) =>
         await _contexto.Usuarios.FirstOrDefaultAsync(u => u.ProfesionalId == profesionalId, cancellationToken);
 
+    public async Task<Usuario?> ObtenerPorPacienteIdAsync(int pacienteId, CancellationToken cancellationToken = default) =>
+        await _contexto.Usuarios.FirstOrDefaultAsync(u => u.PacienteId == pacienteId, cancellationToken);
+
     public async Task ActualizarAsync(Usuario usuario, CancellationToken cancellationToken = default)
     {
         _contexto.Usuarios.Update(usuario);

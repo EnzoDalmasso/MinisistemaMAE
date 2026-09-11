@@ -35,6 +35,8 @@ public class ServicioPacientesTests : IDisposable
     private static ServicioPacientes CrearServicio(
         ClinicaDbContext contexto, RolUsuario rol = RolUsuario.Paciente, int? pacienteId = null) => new(
         new RepositorioPacientes(contexto),
+        new RepositorioUsuarios(contexto),
+        new RepositorioTurnos(contexto),
         new UsuarioActualFalso(rol, pacienteId: pacienteId),
         new CrearPacienteDtoValidador(),
         new ActualizarPacienteDtoValidador(),
@@ -47,6 +49,15 @@ public class ServicioPacientesTests : IDisposable
         await contexto.SaveChangesAsync();
         return paciente;
     }
+
+    private static ActualizarPacienteDto DtoDeActualizacionPara(Paciente p, string? dni = null) => new()
+    {
+        Nombre = p.Nombre,
+        Apellido = p.Apellido,
+        Telefono = p.Telefono ?? "11-5555-0000",
+        ObraSocial = p.ObraSocial ?? "OSDE",
+        Dni = dni
+    };
 
     // Un paciente autogestionado arranca sin teléfono/obra social/email;
     // completarlos (ej. al pedir su primer turno) los persiste en su ficha.
@@ -92,5 +103,74 @@ public class ServicioPacientesTests : IDisposable
         await Assert.ThrowsAsync<ExcepcionValidacion>(() => servicio.ActualizarContactoPropioAsync(
             new ActualizarContactoPacienteDto { Telefono = "11-5555-0099", ObraSocial = "OSDE", Email = "no-es-un-email" },
             CancellationToken.None));
+    }
+
+    // El administrador puede corregir un DNI mal cargado por el paciente al autogestionarse.
+    [Fact]
+    public async Task ActualizarAsync_ConDniValido_LoActualiza()
+    {
+        using var contexto = CrearContexto();
+        var paciente = await AgregarPacienteAutogestionadoAsync(contexto, dni: "30123456");
+        var servicio = CrearServicio(contexto);
+
+        var resultado = await servicio.ActualizarAsync(paciente.Id, DtoDeActualizacionPara(paciente, dni: "30123457"), CancellationToken.None);
+
+        Assert.Equal("30123457", resultado.Dni);
+    }
+
+    [Fact]
+    public async Task ActualizarAsync_ConDniYaUsadoPorOtroPaciente_LanzaConflicto()
+    {
+        using var contexto = CrearContexto();
+        var pacienteA = await AgregarPacienteAutogestionadoAsync(contexto, dni: "30123456");
+        var pacienteB = await AgregarPacienteAutogestionadoAsync(contexto, dni: "30123457");
+        var servicio = CrearServicio(contexto);
+
+        await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.ActualizarAsync(
+            pacienteB.Id, DtoDeActualizacionPara(pacienteB, dni: pacienteA.Dni), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task EliminarAsync_ConTurnosAsociados_LanzaConflicto()
+    {
+        using var contexto = CrearContexto();
+        var paciente = await AgregarPacienteAutogestionadoAsync(contexto);
+        var profesional = new Profesional { Nombre = "Laura", Apellido = "Gómez", Especialidad = "Clínica Médica", FechaCreacion = DateTime.UtcNow };
+        contexto.Profesionales.Add(profesional);
+        await contexto.SaveChangesAsync();
+        contexto.Turnos.Add(new Turno
+        {
+            PacienteId = paciente.Id, ProfesionalId = profesional.Id,
+            Fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1), Horario = new TimeOnly(9, 0),
+            Estado = EstadoTurno.Pendiente, FechaCreacion = DateTime.UtcNow
+        });
+        await contexto.SaveChangesAsync();
+        var servicio = CrearServicio(contexto);
+
+        await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.EliminarAsync(paciente.Id, CancellationToken.None));
+    }
+
+    // Al eliminar un paciente autogestionado hay que borrar también su
+    // Usuario vinculado (la FK es Restrict) para que el borrado no falle.
+    [Fact]
+    public async Task EliminarAsync_SinTurnos_BorraAlPacienteYSuUsuarioVinculado()
+    {
+        using var contexto = CrearContexto();
+        var paciente = await AgregarPacienteAutogestionadoAsync(contexto);
+        contexto.Usuarios.Add(new Usuario
+        {
+            NombreUsuario = paciente.Dni!,
+            ContrasenaHash = "hash-de-prueba",
+            Rol = RolUsuario.Paciente,
+            PacienteId = paciente.Id,
+            FechaCreacion = DateTime.UtcNow
+        });
+        await contexto.SaveChangesAsync();
+        var servicio = CrearServicio(contexto);
+
+        await servicio.EliminarAsync(paciente.Id, CancellationToken.None);
+
+        Assert.Null(await contexto.Pacientes.FindAsync(paciente.Id));
+        Assert.Null(await contexto.Usuarios.FirstOrDefaultAsync(u => u.PacienteId == paciente.Id));
     }
 }

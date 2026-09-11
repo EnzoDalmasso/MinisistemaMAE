@@ -44,6 +44,16 @@ public class PacientesController : ControllerBase
         return Ok(await _servicio.ActualizarAsync(id, dto, cancellationToken));
     }
 
+    // Definitivo: ServicioPacientes lo rechaza con 409 si el paciente tiene
+    // turnos asociados.
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<ActionResult> Eliminar(int id, CancellationToken cancellationToken)
+    {
+        await _servicio.EliminarAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     // Autoservicio del paciente. Nunca recibe un id: el servicio siempre
     // opera sobre el paciente de la cuenta autenticada.
     [HttpGet("mi-perfil")]

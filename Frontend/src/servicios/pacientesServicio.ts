@@ -17,6 +17,10 @@ export const pacientesServicio = {
     return data;
   },
 
+  eliminar: async (id: number): Promise<void> => {
+    await clienteApi.delete(`/pacientes/${id}`);
+  },
+
   // Autoservicio del paciente logueado (rol Paciente): siempre opera sobre
   // su propia ficha, nunca recibe un id.
   obtenerMiPerfil: async (): Promise<Paciente> => {

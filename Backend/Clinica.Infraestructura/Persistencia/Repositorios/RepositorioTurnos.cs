@@ -135,6 +135,9 @@ public class RepositorioTurnos : IRepositorioTurnos
     public async Task<HashSet<int>> ObtenerProfesionalesConTurnosAsync(CancellationToken cancellationToken = default) =>
         (await _contexto.Turnos.AsNoTracking().Select(t => t.ProfesionalId).Distinct().ToListAsync(cancellationToken)).ToHashSet();
 
+    public async Task<bool> ExisteAlgunoPorPacienteAsync(int pacienteId, CancellationToken cancellationToken = default) =>
+        await _contexto.Turnos.AsNoTracking().AnyAsync(t => t.PacienteId == pacienteId, cancellationToken);
+
     public async Task AgregarAsync(Turno turno, CancellationToken cancellationToken = default)
     {
         _contexto.Turnos.Add(turno);

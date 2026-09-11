@@ -1,13 +1,14 @@
 import { ActionIcon, Alert, Button, Center, Group, Loader, Modal, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconEdit, IconPlus } from '@tabler/icons-react';
+import { IconAlertCircle, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import type { GuardarPacienteDto, Paciente } from '../modelos/paciente';
 import { pacientesServicio } from '../servicios/pacientesServicio';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
 
-const VALORES_INICIALES: GuardarPacienteDto = { nombre: '', apellido: '', telefono: '', obraSocial: '' };
+const VALORES_INICIALES: GuardarPacienteDto = { nombre: '', apellido: '', telefono: '', obraSocial: '', dni: '' };
 
 export function PaginaPacientes() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -32,6 +33,10 @@ export function PaginaPacientes() {
       },
       obraSocial: (valor) =>
         valor.trim().length === 0 ? 'La obra social es obligatoria.' : valor.length > 100 ? 'Máximo 100 caracteres.' : null,
+      dni: (valor) =>
+        valor.trim().length === 0 || /^\d{7,8}$/.test(valor.trim())
+          ? null
+          : 'El DNI debe tener entre 7 y 8 dígitos, sin puntos ni espacios.',
     },
   });
 
@@ -68,6 +73,7 @@ export function PaginaPacientes() {
       // administrador los completa acá si hace falta.
       telefono: paciente.telefono ?? '',
       obraSocial: paciente.obraSocial ?? '',
+      dni: paciente.dni ?? '',
     });
     form.clearErrors();
     setModalAbierto(true);
@@ -96,6 +102,29 @@ export function PaginaPacientes() {
       setGuardando(false);
     }
   });
+
+  const manejarEliminar = (paciente: Paciente) => {
+    modals.openConfirmModal({
+      title: 'Eliminar paciente',
+      children: (
+        <Text size="sm">
+          ¿Confirmás eliminar definitivamente a <strong>{paciente.nombre} {paciente.apellido}</strong>? Esta acción
+          no se puede deshacer. Si tiene turnos asociados, no se va a poder eliminar.
+        </Text>
+      ),
+      labels: { confirm: 'Eliminar definitivamente', cancel: 'Volver' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await pacientesServicio.eliminar(paciente.id);
+          notifications.show({ color: 'green', message: 'Paciente eliminado correctamente.' });
+          await cargarPacientes();
+        } catch (err) {
+          notifications.show({ color: 'red', message: obtenerMensajeError(err) });
+        }
+      },
+    });
+  };
 
   return (
     <>
@@ -148,9 +177,14 @@ export function PaginaPacientes() {
                   <Table.Td>{paciente.obraSocial ?? '—'}</Table.Td>
                   <Table.Td>{paciente.email ?? '—'}</Table.Td>
                   <Table.Td>
-                    <ActionIcon variant="subtle" onClick={() => abrirModalEditar(paciente)} aria-label="Editar paciente">
-                      <IconEdit size={16} />
-                    </ActionIcon>
+                    <Group gap={4} wrap="nowrap">
+                      <ActionIcon variant="subtle" onClick={() => abrirModalEditar(paciente)} aria-label="Editar paciente">
+                        <IconEdit size={16} />
+                      </ActionIcon>
+                      <ActionIcon variant="subtle" color="red" onClick={() => manejarEliminar(paciente)} aria-label="Eliminar paciente">
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))
@@ -168,6 +202,15 @@ export function PaginaPacientes() {
           <Stack>
             <TextInput label="Nombre" required maxLength={100} {...form.getInputProps('nombre')} />
             <TextInput label="Apellido" required maxLength={100} {...form.getInputProps('apellido')} />
+            {pacienteEnEdicion && (
+              <TextInput
+                label="DNI"
+                description="Solo para pacientes autogestionados. Dejar en blanco lo borra."
+                placeholder="30123456"
+                maxLength={8}
+                {...form.getInputProps('dni')}
+              />
+            )}
             <TextInput
               label="Teléfono"
               required

@@ -12,12 +12,15 @@ export interface Paciente {
   dni: string | null;
 }
 
-// El alta manual del Administrador sigue pidiendo estos 4 campos.
+// El alta manual del Administrador sigue pidiendo estos 4 campos. El DNI es
+// opcional y solo se muestra/envía al editar (permite corregir uno mal
+// cargado por un paciente autogestionado); vacío lo limpia.
 export interface GuardarPacienteDto {
   nombre: string;
   apellido: string;
   telefono: string;
   obraSocial: string;
+  dni: string;
 }
 
 // DTO acotado para el autoservicio del paciente (no permite tocar

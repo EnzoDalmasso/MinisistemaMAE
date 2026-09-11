@@ -16,9 +16,13 @@ public interface IRepositorioUsuarios
     // profesional desde el administrador (ver ServicioProfesionales).
     Task<Usuario?> ObtenerPorProfesionalIdAsync(int profesionalId, CancellationToken cancellationToken = default);
 
+    // Análogo a ObtenerPorProfesionalIdAsync, pero para el Usuario de un
+    // paciente autogestionado (si lo tiene) — usado al eliminarlo.
+    Task<Usuario?> ObtenerPorPacienteIdAsync(int pacienteId, CancellationToken cancellationToken = default);
+
     Task ActualizarAsync(Usuario usuario, CancellationToken cancellationToken = default);
 
-    // Solo se usa al eliminar definitivamente un profesional: su Usuario
-    // vinculado tiene que borrarse antes (la FK es Restrict).
+    // Solo se usa al eliminar definitivamente un profesional o un paciente:
+    // su Usuario vinculado tiene que borrarse antes (la FK es Restrict).
     Task EliminarAsync(Usuario usuario, CancellationToken cancellationToken = default);
 }

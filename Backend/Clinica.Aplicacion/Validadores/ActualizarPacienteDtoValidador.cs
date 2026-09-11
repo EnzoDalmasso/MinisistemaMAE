@@ -23,5 +23,9 @@ public class ActualizarPacienteDtoValidador : AbstractValidator<ActualizarPacien
         RuleFor(p => p.ObraSocial)
             .NotEmpty().WithMessage("La obra social es obligatoria.")
             .MaximumLength(100).WithMessage("La obra social no puede superar los 100 caracteres.");
+
+        RuleFor(p => p.Dni)
+            .Matches(@"^\d{7,8}$").WithMessage("El DNI debe tener entre 7 y 8 dígitos, sin puntos ni espacios.")
+            .When(p => !string.IsNullOrWhiteSpace(p.Dni));
     }
 }

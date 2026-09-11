@@ -51,4 +51,8 @@ public interface IRepositorioTurnos
     // sola consulta — usado para calcular en el listado si cada profesional
     // "puede eliminarse" sin hacer una consulta por fila.
     Task<HashSet<int>> ObtenerProfesionalesConTurnosAsync(CancellationToken cancellationToken = default);
+
+    // Análogo a ExisteAlgunoPorProfesionalAsync, pero para bloquear la
+    // eliminación definitiva de un paciente con turnos asociados.
+    Task<bool> ExisteAlgunoPorPacienteAsync(int pacienteId, CancellationToken cancellationToken = default);
 }

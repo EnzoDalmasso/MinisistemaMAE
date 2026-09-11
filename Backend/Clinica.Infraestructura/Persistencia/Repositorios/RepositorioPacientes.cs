@@ -37,4 +37,10 @@ public class RepositorioPacientes : IRepositorioPacientes
         _contexto.Pacientes.Update(paciente);
         await _contexto.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task EliminarAsync(Paciente paciente, CancellationToken cancellationToken = default)
+    {
+        _contexto.Pacientes.Remove(paciente);
+        await _contexto.SaveChangesAsync(cancellationToken);
+    }
 }

@@ -8,6 +8,10 @@ public interface IServicioPacientes
     Task<PacienteDto> CrearAsync(CrearPacienteDto dto, CancellationToken cancellationToken = default);
     Task<PacienteDto> ActualizarAsync(int id, ActualizarPacienteDto dto, CancellationToken cancellationToken = default);
 
+    // Exclusivo del Administrador. Definitivo: se rechaza si el paciente
+    // tiene algún turno asociado (se perdería ese historial).
+    Task EliminarAsync(int id, CancellationToken cancellationToken = default);
+
     // Autoservicio: el propio paciente consulta/completa sus datos de
     // contacto (nunca un id ajeno, ver ServicioPacientes).
     Task<PacienteDto> ObtenerPropioAsync(CancellationToken cancellationToken = default);
