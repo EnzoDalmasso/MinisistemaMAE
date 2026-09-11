@@ -26,4 +26,10 @@ public class Profesional
     public DateTime FechaCreacion { get; set; }
 
     public ICollection<Turno> Turnos { get; set; } = new List<Turno>();
+
+    // Días y horarios en los que atiende. Vacío significa "todavía no
+    // configuró un horario propio": ServicioTurnos cae en ese caso al
+    // horario general de la clínica (ver HorarioClinica), para no romper a
+    // los profesionales existentes que no lo hayan cargado.
+    public ICollection<BloqueHorarioProfesional> BloquesHorario { get; set; } = new List<BloqueHorarioProfesional>();
 }

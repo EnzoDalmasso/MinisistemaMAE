@@ -36,6 +36,20 @@ public static class SeedDeDatos
         contexto.Profesionales.AddRange(profesionales);
         await contexto.SaveChangesAsync();
 
+        // Horario de atención de demostración: de lunes a viernes, de 8 a 12
+        // y de 14 a 18 (con corte de mediodía), igual para los tres
+        // profesionales del seed.
+        var diasHabiles = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+        var bloquesHorario = profesionales
+            .SelectMany(p => diasHabiles.SelectMany(dia => new List<BloqueHorarioProfesional>
+            {
+                new() { ProfesionalId = p.Id, DiaSemana = dia, HoraInicio = new TimeOnly(8, 0), HoraFin = new TimeOnly(12, 0) },
+                new() { ProfesionalId = p.Id, DiaSemana = dia, HoraInicio = new TimeOnly(14, 0), HoraFin = new TimeOnly(18, 0) }
+            }))
+            .ToList();
+        contexto.BloquesHorarioProfesional.AddRange(bloquesHorario);
+        await contexto.SaveChangesAsync();
+
         var pacientes = new List<Paciente>
         {
             new() { Nombre = "Julián", Apellido = "Ramírez", Telefono = "11-5555-0001", ObraSocial = "OSDE", FechaCreacion = ahora },

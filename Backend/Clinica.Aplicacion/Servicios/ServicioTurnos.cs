@@ -205,7 +205,11 @@ public class ServicioTurnos : IServicioTurnos
 
         if (dto.Estado != EstadoTurno.Cancelado)
         {
-            await VerificarDisponibilidadAsync(turno.ProfesionalId, turno.Fecha, turno.Horario, idExcluir: id, cancellationToken);
+            // No se revalida contra el horario laboral configurado: acá no se
+            // está eligiendo fecha/horario (son los que ya tenía el turno), así
+            // que si el profesional cambió su horario después de agendarlo no
+            // debe impedirle registrar qué pasó con una cita ya pasada.
+            await VerificarDisponibilidadAsync(turno.ProfesionalId, turno.Fecha, turno.Horario, idExcluir: id, cancellationToken, validarHorarioLaboral: false);
         }
 
         turno.Estado = dto.Estado;
@@ -234,21 +238,43 @@ public class ServicioTurnos : IServicioTurnos
         var ahora = DateTime.Now;
         var horarioMinimo = fecha == DateOnly.FromDateTime(ahora) ? TimeOnly.FromDateTime(ahora) : TimeOnly.MinValue;
 
-        // Genera la grilla completa (apertura -> cierre, de a "duracion") y
-        // descarta los horarios que ya tienen un turno activo o que ya
-        // pasaron. El último horario ofrecido es el último que termina sin
-        // pasarse del cierre.
-        var horarioActual = HorarioClinica.Apertura;
-        while (horarioActual.Add(duracion) <= HorarioClinica.Cierre)
+        // Genera la grilla dentro de cada bloque de atención del profesional
+        // para ese día de la semana (de a "duracion") y descarta los horarios
+        // que ya tienen un turno activo o que ya pasaron. El último horario
+        // ofrecido de cada bloque es el último que termina sin pasarse de su cierre.
+        foreach (var bloque in ObtenerBloquesEfectivos(profesional, fecha.DayOfWeek))
         {
-            if (horarioActual > horarioMinimo && !ocupadosPorHorario.Contains(horarioActual))
+            var horarioActual = bloque.HoraInicio;
+            while (horarioActual.Add(duracion) <= bloque.HoraFin)
             {
-                disponibles.Add(horarioActual);
+                if (horarioActual > horarioMinimo && !ocupadosPorHorario.Contains(horarioActual))
+                {
+                    disponibles.Add(horarioActual);
+                }
+                horarioActual = horarioActual.Add(duracion);
             }
-            horarioActual = horarioActual.Add(duracion);
         }
 
         return disponibles;
+    }
+
+    // Bloques de atención de un profesional para un día de la semana puntual.
+    // Si el profesional todavía no configuró ningún horario propio (lista
+    // vacía), se ofrece el horario general de la clínica todos los días: es
+    // el comportamiento previo a que existiera esta configuración por
+    // profesional, y evita que uno recién migrado quede sin turnos ofrecibles.
+    private static List<(TimeOnly HoraInicio, TimeOnly HoraFin)> ObtenerBloquesEfectivos(Profesional profesional, DayOfWeek dia)
+    {
+        if (profesional.BloquesHorario.Count == 0)
+        {
+            return new() { (HorarioClinica.Apertura, HorarioClinica.Cierre) };
+        }
+
+        return profesional.BloquesHorario
+            .Where(b => b.DiaSemana == dia)
+            .OrderBy(b => b.HoraInicio)
+            .Select(b => (b.HoraInicio, b.HoraFin))
+            .ToList();
     }
 
     private void VerificarPertenencia(Turno turno)
@@ -285,8 +311,25 @@ public class ServicioTurnos : IServicioTurnos
         }
     }
 
-    private async Task VerificarDisponibilidadAsync(int profesionalId, DateOnly fecha, TimeOnly horario, int? idExcluir, CancellationToken cancellationToken)
+    private async Task VerificarDisponibilidadAsync(int profesionalId, DateOnly fecha, TimeOnly horario, int? idExcluir, CancellationToken cancellationToken, bool validarHorarioLaboral = true)
     {
+        // Defensa en profundidad: el frontend arma "Nuevo turno"/reprogramar a
+        // partir de /horarios-disponibles (que ya respeta el horario del
+        // profesional), pero esto también lo exige acá para quien le pegue
+        // directo a la API.
+        if (validarHorarioLaboral)
+        {
+            var profesional = await _repositorioProfesionales.ObtenerPorIdAsync(profesionalId, cancellationToken)
+                ?? throw new ExcepcionNoEncontrado("No se encontró el profesional seleccionado.");
+
+            var atiendeEnEseHorario = ObtenerBloquesEfectivos(profesional, fecha.DayOfWeek)
+                .Any(bloque => horario >= bloque.HoraInicio && horario < bloque.HoraFin);
+            if (!atiendeEnEseHorario)
+            {
+                throw new ExcepcionConflicto("El profesional no atiende ese día u horario.");
+            }
+        }
+
         var existeSolapamiento = await _repositorioTurnos.ExisteSolapamientoAsync(profesionalId, fecha, horario, idExcluir, cancellationToken);
         if (existeSolapamiento)
         {

@@ -12,6 +12,7 @@ public class ClinicaDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Profesional> Profesionales => Set<Profesional>();
+    public DbSet<BloqueHorarioProfesional> BloquesHorarioProfesional => Set<BloqueHorarioProfesional>();
     public DbSet<Turno> Turnos => Set<Turno>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

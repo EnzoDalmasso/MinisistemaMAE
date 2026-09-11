@@ -12,6 +12,10 @@ public interface IServicioProfesionales
     // propio profesional (solo sobre sí mismo); el chequeo de permiso vive acá.
     Task<ProfesionalDto> ActualizarDuracionTurnoAsync(int id, ActualizarDuracionTurnoDto dto, CancellationToken cancellationToken = default);
 
+    // Mismo esquema de permisos que ActualizarDuracionTurnoAsync. Reemplaza
+    // por completo los días/horarios de atención del profesional.
+    Task<ProfesionalDto> ActualizarHorariosAsync(int id, ActualizarHorariosDto dto, CancellationToken cancellationToken = default);
+
     // Las tres siguientes son exclusivas del Administrador (ver
     // ProfesionalesController). Desactivar también desactiva el Usuario
     // vinculado (no puede loguearse) y deja de ofrecerse para turnos nuevos;

@@ -501,6 +501,93 @@ public class ServicioTurnosTests : IDisposable
         await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.CrearAsync(dto, CancellationToken.None));
     }
 
+    // Si el profesional configuró su propio horario de atención, la grilla
+    // debe respetarlo en vez de ofrecer todo el horario general de la
+    // clínica: un día en el que no atiende no debe ofrecer ningún horario.
+    [Fact]
+    public async Task ObtenerHorariosDisponiblesAsync_ConHorarioPropioConfigurado_NoOfreceNadaUnDiaQueNoAtiende()
+    {
+        using var contexto = CrearContexto();
+        var profesional = await AgregarProfesionalAsync(contexto);
+        // El profesional solo atiende los lunes, de 8 a 12.
+        contexto.BloquesHorarioProfesional.Add(new BloqueHorarioProfesional
+        {
+            ProfesionalId = profesional.Id, DiaSemana = DayOfWeek.Monday,
+            HoraInicio = new TimeOnly(8, 0), HoraFin = new TimeOnly(12, 0)
+        });
+        await contexto.SaveChangesAsync();
+        var servicio = CrearServicio(contexto);
+
+        // Se busca la próxima fecha que NO sea lunes, para verificar que ese
+        // día no ofrece ningún horario.
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+        while (fecha.DayOfWeek == DayOfWeek.Monday)
+        {
+            fecha = fecha.AddDays(1);
+        }
+
+        var disponibles = await servicio.ObtenerHorariosDisponiblesAsync(profesional.Id, fecha, cancellationToken: CancellationToken.None);
+
+        Assert.Empty(disponibles);
+    }
+
+    // El horario configurado también se respeta al crear un turno directo
+    // por API (no solo en la grilla que arma el frontend).
+    [Fact]
+    public async Task CrearAsync_FueraDelHorarioConfiguradoDelProfesional_LanzaExcepcionConflicto()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        contexto.BloquesHorarioProfesional.Add(new BloqueHorarioProfesional
+        {
+            ProfesionalId = profesional.Id, DiaSemana = DayOfWeek.Monday,
+            HoraInicio = new TimeOnly(8, 0), HoraFin = new TimeOnly(12, 0)
+        });
+        await contexto.SaveChangesAsync();
+        var servicio = CrearServicio(contexto);
+
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+        while (fecha.DayOfWeek == DayOfWeek.Monday)
+        {
+            fecha = fecha.AddDays(1);
+        }
+
+        var dto = new CrearTurnoDto { PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(10, 0) };
+
+        await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.CrearAsync(dto, CancellationToken.None));
+    }
+
+    // El profesional puede marcar un turno propio como Atendido aunque su
+    // horario configurado haya cambiado después de agendarlo (no debe
+    // re-validarse el horario laboral al solo cambiar el estado).
+    [Fact]
+    public async Task CambiarEstadoAsync_ConHorarioDelProfesionalCambiadoDespues_NoLanzaConflicto()
+    {
+        using var contexto = CrearContexto();
+        var (paciente, profesional) = await SembrarPacienteYProfesionalAsync(contexto);
+        var servicioAdmin = CrearServicio(contexto);
+        var fecha = DateOnly.FromDateTime(DateTime.Now).AddDays(1);
+        var turno = await servicioAdmin.CrearAsync(new CrearTurnoDto
+        {
+            PacienteId = paciente.Id, ProfesionalId = profesional.Id, Fecha = fecha, Horario = new TimeOnly(9, 0)
+        }, CancellationToken.None);
+
+        // El profesional ahora restringe su horario a un rango que ya no
+        // incluye el horario del turno recién creado.
+        contexto.BloquesHorarioProfesional.Add(new BloqueHorarioProfesional
+        {
+            ProfesionalId = profesional.Id, DiaSemana = fecha.DayOfWeek,
+            HoraInicio = new TimeOnly(14, 0), HoraFin = new TimeOnly(18, 0)
+        });
+        await contexto.SaveChangesAsync();
+
+        var servicioProfesional = CrearServicio(contexto, RolUsuario.Profesional, profesional.Id);
+        var actualizado = await servicioProfesional.CambiarEstadoAsync(
+            turno.Id, new CambiarEstadoTurnoDto { Estado = EstadoTurno.Atendido }, CancellationToken.None);
+
+        Assert.Equal(EstadoTurno.Atendido, actualizado.Estado);
+    }
+
     // La grilla de hoy no debe ofrecer horarios que ya pasaron (antes se
     // seguían mostrando turnos "disponibles" de horas ya vencidas del día).
     [Fact]

@@ -33,15 +33,17 @@ public class ServicioProfesionalesTests : IDisposable
 
     private ClinicaDbContext CrearContexto() => new(_opciones);
 
-    private static ServicioProfesionales CrearServicio(ClinicaDbContext contexto) => new(
+    private static ServicioProfesionales CrearServicio(
+        ClinicaDbContext contexto, RolUsuario rol = RolUsuario.Administrador, int? profesionalId = null) => new(
         new RepositorioProfesionales(contexto),
         new RepositorioUsuarios(contexto),
         new RepositorioTurnos(contexto),
-        new UsuarioActualFalso(RolUsuario.Administrador),
+        new UsuarioActualFalso(rol, profesionalId),
         new HasheadorContrasenasBCrypt(),
         new CrearProfesionalDtoValidador(),
         new ActualizarProfesionalDtoValidador(),
-        new ActualizarDuracionTurnoDtoValidador());
+        new ActualizarDuracionTurnoDtoValidador(),
+        new ActualizarHorariosDtoValidador());
 
     private static async Task<Profesional> CrearProfesionalConLoginAsync(
         ClinicaDbContext contexto, ServicioProfesionales servicio, string nombreUsuario = "martin.pereyra")
@@ -236,6 +238,53 @@ public class ServicioProfesionalesTests : IDisposable
 
         Assert.Null(await contexto.Profesionales.FirstOrDefaultAsync(p => p.Id == profesional.Id));
         Assert.Null(await contexto.Usuarios.FirstOrDefaultAsync(u => u.ProfesionalId == profesional.Id));
+    }
+
+    // ActualizarHorariosAsync reemplaza por completo el horario: la segunda
+    // llamada no debe "sumar" bloques a los de la primera, sino reemplazarlos.
+    [Fact]
+    public async Task ActualizarHorariosAsync_ReemplazaPorCompletoLosBloquesAnteriores()
+    {
+        using var contexto = CrearContexto();
+        var servicio = CrearServicio(contexto);
+        var profesional = await CrearProfesionalConLoginAsync(contexto, servicio);
+
+        await servicio.ActualizarHorariosAsync(profesional.Id, new ActualizarHorariosDto
+        {
+            Bloques = new List<BloqueHorarioDto>
+            {
+                new() { DiaSemana = DayOfWeek.Monday, HoraInicio = new TimeOnly(8, 0), HoraFin = new TimeOnly(12, 0) }
+            }
+        }, CancellationToken.None);
+
+        var resultado = await servicio.ActualizarHorariosAsync(profesional.Id, new ActualizarHorariosDto
+        {
+            Bloques = new List<BloqueHorarioDto>
+            {
+                new() { DiaSemana = DayOfWeek.Tuesday, HoraInicio = new TimeOnly(14, 0), HoraFin = new TimeOnly(18, 0) }
+            }
+        }, CancellationToken.None);
+
+        var bloque = Assert.Single(resultado.Horarios);
+        Assert.Equal(DayOfWeek.Tuesday, bloque.DiaSemana);
+    }
+
+    // Mismo esquema de permisos que la duración de turno: un profesional no
+    // puede tocar el horario de otro.
+    [Fact]
+    public async Task ActualizarHorariosAsync_ComoProfesionalSobreOtroProfesional_LanzaExcepcionProhibido()
+    {
+        using var contexto = CrearContexto();
+        var servicioAdmin = CrearServicio(contexto);
+        var profesionalPropio = await CrearProfesionalConLoginAsync(contexto, servicioAdmin, "propio");
+        var profesionalAjeno = await CrearProfesionalConLoginAsync(contexto, servicioAdmin, "ajeno");
+
+        var servicioProfesional = CrearServicio(contexto, RolUsuario.Profesional, profesionalPropio.Id);
+
+        await Assert.ThrowsAsync<ExcepcionProhibido>(() => servicioProfesional.ActualizarHorariosAsync(
+            profesionalAjeno.Id,
+            new ActualizarHorariosDto { Bloques = new List<BloqueHorarioDto>() },
+            CancellationToken.None));
     }
 
     private static async Task BackdatearDesactivacionAsync(ClinicaDbContext contexto, int profesionalId)

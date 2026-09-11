@@ -1,9 +1,10 @@
 namespace Clinica.Aplicacion.Comun;
 
-// Horario de atención de la clínica. Es una validación simple a nivel global,
-// no un sistema de horarios por profesional (fuera de alcance, ver mejoras
-// futuras). Centralizado acá para no repetirlo en cada validador y en el
-// cálculo de horarios disponibles.
+// Horario general de la clínica: el techo/piso dentro del cual puede caer el
+// horario propio de cada profesional (ver BloqueHorarioProfesional y
+// ActualizarHorariosDtoValidador) y el horario por defecto para quien todavía
+// no configuró el suyo (ver ServicioTurnos.ObtenerBloquesEfectivos).
+// Centralizado acá para no repetirlo en cada validador.
 public static class HorarioClinica
 {
     public static readonly TimeOnly Apertura = new(7, 0);

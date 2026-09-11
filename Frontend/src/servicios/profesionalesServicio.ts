@@ -1,4 +1,4 @@
-import type { CrearProfesionalDto, GuardarProfesionalDto, Profesional } from '../modelos/profesional';
+import type { BloqueHorario, CrearProfesionalDto, GuardarProfesionalDto, Profesional } from '../modelos/profesional';
 import clienteApi from './clienteApi';
 
 export const profesionalesServicio = {
@@ -19,6 +19,11 @@ export const profesionalesServicio = {
 
   actualizarDuracionTurno: async (id: number, duracionTurnoMinutos: number): Promise<Profesional> => {
     const { data } = await clienteApi.patch<Profesional>(`/profesionales/${id}/duracion-turno`, { duracionTurnoMinutos });
+    return data;
+  },
+
+  actualizarHorarios: async (id: number, bloques: BloqueHorario[]): Promise<Profesional> => {
+    const { data } = await clienteApi.put<Profesional>(`/profesionales/${id}/horarios`, { bloques });
     return data;
   },
 

@@ -50,6 +50,15 @@ public class ProfesionalesController : ControllerBase
         return Ok(await _servicio.ActualizarDuracionTurnoAsync(id, dto, cancellationToken));
     }
 
+    // El propio profesional puede configurar sus días/horarios de atención; el
+    // administrador, los de cualquiera (mismo esquema que duracion-turno).
+    [HttpPut("{id:int}/horarios")]
+    [Authorize(Roles = "Administrador,Profesional")]
+    public async Task<ActionResult<ProfesionalDto>> ActualizarHorarios(int id, [FromBody] ActualizarHorariosDto dto, CancellationToken cancellationToken)
+    {
+        return Ok(await _servicio.ActualizarHorariosAsync(id, dto, cancellationToken));
+    }
+
     [HttpPatch("{id:int}/desactivar")]
     [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<ProfesionalDto>> Desactivar(int id, CancellationToken cancellationToken)

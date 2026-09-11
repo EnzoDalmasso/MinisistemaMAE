@@ -18,8 +18,9 @@ import {
 import { useForm } from '@mantine/form';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconBan, IconEdit, IconPlayerPlay, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAlertCircle, IconBan, IconClock, IconEdit, IconPlayerPlay, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { EditorHorariosAtencion } from '../componentes/EditorHorariosAtencion';
 import type { CrearProfesionalDto, Profesional } from '../modelos/profesional';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
@@ -177,6 +178,10 @@ export function PaginaProfesionales() {
     });
   };
 
+  const manejarHorariosGuardados = (profesionalId: number, horarios: Profesional['horarios']) => {
+    setProfesionales((prev) => prev.map((p) => (p.id === profesionalId ? { ...p, horarios } : p)));
+  };
+
   const manejarReactivar = async (profesional: Profesional) => {
     try {
       await profesionalesServicio.reactivar(profesional.id);
@@ -239,7 +244,7 @@ export function PaginaProfesionales() {
               <Table.Th>Email</Table.Th>
               <Table.Th>Duración turno</Table.Th>
               <Table.Th>Estado</Table.Th>
-              <Table.Th w={120} />
+              <Table.Th w={150} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -269,6 +274,16 @@ export function PaginaProfesionales() {
                       <ActionIcon variant="subtle" onClick={() => abrirModalEditar(profesional)} aria-label="Editar profesional">
                         <IconEdit size={16} />
                       </ActionIcon>
+                      <EditorHorariosAtencion
+                        profesionalId={profesional.id}
+                        horarios={profesional.horarios}
+                        onGuardado={(horarios) => manejarHorariosGuardados(profesional.id, horarios)}
+                        renderTrigger={(abrir) => (
+                          <ActionIcon variant="subtle" onClick={abrir} aria-label="Editar horarios de atención">
+                            <IconClock size={16} />
+                          </ActionIcon>
+                        )}
+                      />
                       {profesional.activo ? (
                         <ActionIcon
                           variant="subtle"

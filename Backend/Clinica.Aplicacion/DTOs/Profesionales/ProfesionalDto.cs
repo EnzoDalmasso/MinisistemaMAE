@@ -14,4 +14,8 @@ public class ProfesionalDto
     // ningún turno asociado. El frontend lo usa para habilitar/ocultar el
     // botón "Eliminar" sin reimplementar la regla.
     public bool PuedeEliminarse { get; set; }
+
+    // Días y horarios en los que atiende. Vacío significa "sin horario
+    // propio configurado" (ver ServicioTurnos.ObtenerHorariosDisponiblesAsync).
+    public List<BloqueHorarioDto> Horarios { get; set; } = new();
 }

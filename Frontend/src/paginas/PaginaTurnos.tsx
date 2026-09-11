@@ -19,11 +19,12 @@ import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconCalendarOff, IconEdit, IconPlus } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { EditorHorariosAtencion } from '../componentes/EditorHorariosAtencion';
 import { EstadoTurnoBadge } from '../componentes/EstadoTurnoBadge';
 import { useAutenticacion } from '../hooks/useAutenticacion';
 import { useHorariosDisponibles } from '../hooks/useHorariosDisponibles';
 import type { Paciente } from '../modelos/paciente';
-import type { Profesional } from '../modelos/profesional';
+import type { BloqueHorario, Profesional } from '../modelos/profesional';
 import { ESTADOS_TURNO, type EstadoTurno, type Turno, type TurnoFiltro } from '../modelos/turno';
 import { pacientesServicio } from '../servicios/pacientesServicio';
 import { profesionalesServicio } from '../servicios/profesionalesServicio';
@@ -73,6 +74,7 @@ export function PaginaTurnos() {
   const [duracionActual, setDuracionActual] = useState<number | null>(null);
   const [duracionInput, setDuracionInput] = useState<number | ''>('');
   const [guardandoDuracion, setGuardandoDuracion] = useState(false);
+  const [horariosPropios, setHorariosPropios] = useState<BloqueHorario[]>([]);
 
   const form = useForm<ValoresFormularioTurno>({
     initialValues: VALORES_INICIALES,
@@ -131,6 +133,7 @@ export function PaginaTurnos() {
         if (propio) {
           setDuracionActual(propio.duracionTurnoMinutos);
           setDuracionInput(propio.duracionTurnoMinutos);
+          setHorariosPropios(propio.horarios);
         }
       })
       .catch(() => undefined);
@@ -308,6 +311,13 @@ export function PaginaTurnos() {
           <Button variant="default" loading={guardandoDuracion} onClick={manejarGuardarDuracion}>
             Guardar duración
           </Button>
+          {sesion?.profesionalId && (
+            <EditorHorariosAtencion
+              profesionalId={sesion.profesionalId}
+              horarios={horariosPropios}
+              onGuardado={setHorariosPropios}
+            />
+          )}
         </Group>
       )}
 

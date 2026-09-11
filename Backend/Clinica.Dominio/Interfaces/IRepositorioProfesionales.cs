@@ -13,4 +13,9 @@ public interface IRepositorioProfesionales
     // profesional está desactivado hace al menos 7 días y no tiene ningún
     // turno asociado (la FK Turno -> Profesional es Restrict a propósito).
     Task EliminarAsync(Profesional profesional, CancellationToken cancellationToken = default);
+
+    // Reemplaza por completo el horario de atención del profesional (borra
+    // los bloques existentes y carga los nuevos) en una sola operación, en
+    // vez de andar reconciliando altas/bajas/modificaciones bloque por bloque.
+    Task ReemplazarHorariosAsync(int profesionalId, List<BloqueHorarioProfesional> bloques, CancellationToken cancellationToken = default);
 }

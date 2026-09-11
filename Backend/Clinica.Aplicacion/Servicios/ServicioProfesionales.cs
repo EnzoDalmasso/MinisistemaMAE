@@ -24,6 +24,7 @@ public class ServicioProfesionales : IServicioProfesionales
     private readonly IValidator<CrearProfesionalDto> _validadorCrear;
     private readonly IValidator<ActualizarProfesionalDto> _validadorActualizar;
     private readonly IValidator<ActualizarDuracionTurnoDto> _validadorDuracion;
+    private readonly IValidator<ActualizarHorariosDto> _validadorHorarios;
 
     public ServicioProfesionales(
         IRepositorioProfesionales repositorio,
@@ -33,7 +34,8 @@ public class ServicioProfesionales : IServicioProfesionales
         IHasheadorContrasenas hasheador,
         IValidator<CrearProfesionalDto> validadorCrear,
         IValidator<ActualizarProfesionalDto> validadorActualizar,
-        IValidator<ActualizarDuracionTurnoDto> validadorDuracion)
+        IValidator<ActualizarDuracionTurnoDto> validadorDuracion,
+        IValidator<ActualizarHorariosDto> validadorHorarios)
     {
         _repositorio = repositorio;
         _repositorioUsuarios = repositorioUsuarios;
@@ -43,6 +45,7 @@ public class ServicioProfesionales : IServicioProfesionales
         _validadorCrear = validadorCrear;
         _validadorActualizar = validadorActualizar;
         _validadorDuracion = validadorDuracion;
+        _validadorHorarios = validadorHorarios;
     }
 
     public async Task<List<ProfesionalDto>> ObtenerTodosAsync(CancellationToken cancellationToken = default)
@@ -142,6 +145,33 @@ public class ServicioProfesionales : IServicioProfesionales
         return ADto(profesional, await _repositorioTurnos.ExisteAlgunoPorProfesionalAsync(id, cancellationToken));
     }
 
+    public async Task<ProfesionalDto> ActualizarHorariosAsync(int id, ActualizarHorariosDto dto, CancellationToken cancellationToken = default)
+    {
+        await _validadorHorarios.ValidarYLanzarAsync(dto, cancellationToken);
+
+        var profesional = await _repositorio.ObtenerPorIdAsync(id, cancellationToken)
+            ?? throw new ExcepcionNoEncontrado("No se encontró el profesional solicitado.");
+
+        // Mismo esquema de permisos que ActualizarDuracionTurnoAsync: el
+        // profesional solo puede tocar su propio horario; el administrador, el de cualquiera.
+        if (_usuarioActual.Rol == RolUsuario.Profesional && _usuarioActual.ProfesionalId != id)
+        {
+            throw new ExcepcionProhibido("No tiene permiso para modificar este profesional.");
+        }
+
+        var bloques = dto.Bloques.Select(b => new BloqueHorarioProfesional
+        {
+            DiaSemana = b.DiaSemana,
+            HoraInicio = b.HoraInicio,
+            HoraFin = b.HoraFin
+        }).ToList();
+
+        await _repositorio.ReemplazarHorariosAsync(id, bloques, cancellationToken);
+
+        var actualizado = await _repositorio.ObtenerPorIdAsync(id, cancellationToken) ?? profesional;
+        return ADto(actualizado, await _repositorioTurnos.ExisteAlgunoPorProfesionalAsync(id, cancellationToken));
+    }
+
     public async Task<ProfesionalDto> DesactivarAsync(int id, CancellationToken cancellationToken = default)
     {
         var profesional = await _repositorio.ObtenerPorIdAsync(id, cancellationToken)
@@ -224,6 +254,10 @@ public class ServicioProfesionales : IServicioProfesionales
         Email = p.Email,
         Activo = p.Activo,
         PuedeEliminarse = !p.Activo && !tieneTurnos && p.FechaDesactivacion is not null &&
-            DateTime.UtcNow - p.FechaDesactivacion.Value >= PlazoMinimoParaEliminar
+            DateTime.UtcNow - p.FechaDesactivacion.Value >= PlazoMinimoParaEliminar,
+        Horarios = p.BloquesHorario
+            .OrderBy(b => b.DiaSemana).ThenBy(b => b.HoraInicio)
+            .Select(b => new BloqueHorarioDto { DiaSemana = b.DiaSemana, HoraInicio = b.HoraInicio, HoraFin = b.HoraFin })
+            .ToList()
     };
 }
