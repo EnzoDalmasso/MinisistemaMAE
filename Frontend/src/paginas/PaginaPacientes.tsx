@@ -8,7 +8,14 @@ import type { GuardarPacienteDto, Paciente } from '../modelos/paciente';
 import { pacientesServicio } from '../servicios/pacientesServicio';
 import { obtenerErroresDeCampo, obtenerMensajeError } from '../utilidades/manejadorErrores';
 
-const VALORES_INICIALES: GuardarPacienteDto = { nombre: '', apellido: '', telefono: '', obraSocial: '', dni: '' };
+const VALORES_INICIALES: GuardarPacienteDto = {
+  nombre: '',
+  apellido: '',
+  telefono: '',
+  obraSocial: '',
+  dni: '',
+  email: '',
+};
 
 export function PaginaPacientes() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -37,6 +44,11 @@ export function PaginaPacientes() {
         valor.trim().length === 0 || /^\d{7,8}$/.test(valor.trim())
           ? null
           : 'El DNI debe tener entre 7 y 8 dígitos, sin puntos ni espacios.',
+      email: (valor) => {
+        if (valor.trim().length === 0) return null;
+        if (valor.length > 150) return 'Máximo 150 caracteres.';
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim()) ? null : 'El email no tiene un formato válido.';
+      },
     },
   });
 
@@ -74,6 +86,7 @@ export function PaginaPacientes() {
       telefono: paciente.telefono ?? '',
       obraSocial: paciente.obraSocial ?? '',
       dni: paciente.dni ?? '',
+      email: paciente.email ?? '',
     });
     form.clearErrors();
     setModalAbierto(true);
@@ -219,6 +232,13 @@ export function PaginaPacientes() {
               {...form.getInputProps('telefono')}
             />
             <TextInput label="Obra social" required maxLength={100} {...form.getInputProps('obraSocial')} />
+            <TextInput
+              label="Email"
+              description="Opcional. Dejar en blanco lo borra."
+              placeholder="paciente@ejemplo.com"
+              maxLength={150}
+              {...form.getInputProps('email')}
+            />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={() => setModalAbierto(false)}>
                 Cancelar

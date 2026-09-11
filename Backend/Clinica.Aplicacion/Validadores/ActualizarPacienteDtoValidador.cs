@@ -27,5 +27,10 @@ public class ActualizarPacienteDtoValidador : AbstractValidator<ActualizarPacien
         RuleFor(p => p.Dni)
             .Matches(@"^\d{7,8}$").WithMessage("El DNI debe tener entre 7 y 8 dígitos, sin puntos ni espacios.")
             .When(p => !string.IsNullOrWhiteSpace(p.Dni));
+
+        RuleFor(p => p.Email)
+            .EmailAddress().WithMessage("El email no tiene un formato válido.")
+            .MaximumLength(150).WithMessage("El email no puede superar los 150 caracteres.")
+            .When(p => !string.IsNullOrWhiteSpace(p.Email));
     }
 }

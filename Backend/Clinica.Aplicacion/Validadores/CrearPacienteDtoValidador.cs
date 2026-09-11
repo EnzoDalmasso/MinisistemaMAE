@@ -23,5 +23,10 @@ public class CrearPacienteDtoValidador : AbstractValidator<CrearPacienteDto>
         RuleFor(p => p.ObraSocial)
             .NotEmpty().WithMessage("La obra social es obligatoria.")
             .MaximumLength(100).WithMessage("La obra social no puede superar los 100 caracteres.");
+
+        RuleFor(p => p.Email)
+            .EmailAddress().WithMessage("El email no tiene un formato válido.")
+            .MaximumLength(150).WithMessage("El email no puede superar los 150 caracteres.")
+            .When(p => !string.IsNullOrWhiteSpace(p.Email));
     }
 }

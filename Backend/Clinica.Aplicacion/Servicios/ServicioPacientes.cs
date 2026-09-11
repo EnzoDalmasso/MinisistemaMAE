@@ -52,6 +52,7 @@ public class ServicioPacientes : IServicioPacientes
             Apellido = dto.Apellido.Trim(),
             Telefono = dto.Telefono.Trim(),
             ObraSocial = dto.ObraSocial.Trim(),
+            Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim(),
             FechaCreacion = DateTime.UtcNow
         };
 
@@ -81,6 +82,7 @@ public class ServicioPacientes : IServicioPacientes
         paciente.Telefono = dto.Telefono.Trim();
         paciente.ObraSocial = dto.ObraSocial.Trim();
         paciente.Dni = dni;
+        paciente.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
 
         await _repositorio.ActualizarAsync(paciente, cancellationToken);
         return ADto(paciente);

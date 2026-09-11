@@ -50,13 +50,14 @@ public class ServicioPacientesTests : IDisposable
         return paciente;
     }
 
-    private static ActualizarPacienteDto DtoDeActualizacionPara(Paciente p, string? dni = null) => new()
+    private static ActualizarPacienteDto DtoDeActualizacionPara(Paciente p, string? dni = null, string? email = null) => new()
     {
         Nombre = p.Nombre,
         Apellido = p.Apellido,
         Telefono = p.Telefono ?? "11-5555-0000",
         ObraSocial = p.ObraSocial ?? "OSDE",
-        Dni = dni
+        Dni = dni,
+        Email = email
     };
 
     // Un paciente autogestionado arranca sin teléfono/obra social/email;
@@ -128,6 +129,32 @@ public class ServicioPacientesTests : IDisposable
 
         await Assert.ThrowsAsync<ExcepcionConflicto>(() => servicio.ActualizarAsync(
             pacienteB.Id, DtoDeActualizacionPara(pacienteB, dni: pacienteA.Dni), CancellationToken.None));
+    }
+
+    // El administrador puede completar el email de un paciente que se
+    // autogestionó sin cargarlo (o que se dio de alta manualmente sin uno).
+    [Fact]
+    public async Task ActualizarAsync_ConEmailValido_LoActualiza()
+    {
+        using var contexto = CrearContexto();
+        var paciente = await AgregarPacienteAutogestionadoAsync(contexto);
+        var servicio = CrearServicio(contexto);
+
+        var resultado = await servicio.ActualizarAsync(
+            paciente.Id, DtoDeActualizacionPara(paciente, email: "camila@example.com"), CancellationToken.None);
+
+        Assert.Equal("camila@example.com", resultado.Email);
+    }
+
+    [Fact]
+    public async Task ActualizarAsync_ConEmailInvalido_LanzaValidacion()
+    {
+        using var contexto = CrearContexto();
+        var paciente = await AgregarPacienteAutogestionadoAsync(contexto);
+        var servicio = CrearServicio(contexto);
+
+        await Assert.ThrowsAsync<ExcepcionValidacion>(() => servicio.ActualizarAsync(
+            paciente.Id, DtoDeActualizacionPara(paciente, email: "no-es-un-email"), CancellationToken.None));
     }
 
     [Fact]
